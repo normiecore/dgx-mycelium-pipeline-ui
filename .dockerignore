@@ -5,3 +5,7 @@ dist
 .git
 docs
 tests
+frontend/node_modules
+frontend-dist
+.superpowers
+.github

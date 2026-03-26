@@ -1,29 +1,20 @@
 # Mycelium Pipeline — All-in-one RunPod image
-# Contains: NATS server, vLLM, Node.js pipeline + frontend
-# Usage: Build and push to Docker Hub, then use as RunPod template
+# Base: vLLM's official image (pre-configured CUDA + PyTorch + vLLM)
+# Added: NATS server, Node.js pipeline + frontend
 
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
+FROM vllm/vllm-openai:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-
-# System deps
-RUN apt-get update && apt-get install -y \
-    curl wget git build-essential \
-    python3 python3-pip python3-venv \
-    && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 22
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install NATS server
 RUN curl -L https://github.com/nats-io/nats-server/releases/download/v2.10.24/nats-server-v2.10.24-linux-amd64.tar.gz | tar xz \
     && mv nats-server-v2.10.24-linux-amd64/nats-server /usr/local/bin/ \
     && rm -rf nats-server-v2.10.24-linux-amd64
-
-# Install vLLM
-RUN pip install --no-cache-dir vllm
 
 # Create app directory
 WORKDIR /app
@@ -45,19 +36,14 @@ RUN cd frontend && npm run build
 COPY prompts/ ./prompts/
 
 # Create data directories
-RUN mkdir -p /data/nats /data/muninndb /data/pipeline /data/huggingface
-
-# Pre-download the model so first startup is fast
-ENV HF_HOME=/data/huggingface
-RUN python3 -c "from huggingface_hub import snapshot_download; snapshot_download('TheBloke/Llama-2-7B-AWQ')" || echo "Model pre-download skipped (will download on first run)"
+RUN mkdir -p /data/nats /data/pipeline /data/huggingface
 
 # Copy startup script
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-# RunPod mounts /workspace as persistent storage
-# Map data dir to /workspace if available, /data otherwise
 ENV DATA_DIR=/data
+ENV HF_HOME=/data/huggingface
 
 EXPOSE 3001 4222 8000
 
