@@ -1,0 +1,124 @@
+:root {
+  --bg-primary: #0f0f1a;
+  --bg-secondary: #1a1a2e;
+  --bg-card: #1a1a3a;
+  --bg-card-hover: #222244;
+  --text-primary: #e0e0e0;
+  --text-secondary: #888;
+  --accent: #4a9eff;
+  --success: #4eff4a;
+  --danger: #ff4a4a;
+  --warning: #ffaa4a;
+  --border: #333;
+  --tag-bg: #2a2a4a;
+  --tag-text: #8af;
+  --sidebar-width: 220px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); }
+
+/* Layout */
+.app-layout { display: flex; min-height: 100vh; }
+.main-content { flex: 1; margin-left: var(--sidebar-width); padding: 24px; overflow-y: auto; }
+
+/* Sidebar */
+.sidebar { width: var(--sidebar-width); height: 100vh; position: fixed; left: 0; top: 0; background: var(--bg-secondary); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; }
+.sidebar-brand { display: flex; align-items: center; gap: 8px; padding: 0 16px; margin-bottom: 24px; }
+.sidebar-logo { font-size: 24px; }
+.sidebar-title { font-size: 18px; font-weight: bold; color: var(--accent); }
+.sidebar-nav { flex: 1; }
+.sidebar-link { display: block; padding: 10px 16px; color: var(--text-secondary); text-decoration: none; font-size: 14px; border-left: 3px solid transparent; transition: all 0.15s; }
+.sidebar-link:hover { color: var(--text-primary); background: rgba(255,255,255,0.03); }
+.sidebar-link.active { color: var(--text-primary); background: rgba(74,158,255,0.08); border-left-color: var(--accent); }
+.sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
+.sidebar-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+.sidebar-logout { background: none; border: none; color: var(--text-secondary); font-size: 12px; cursor: pointer; padding: 0; }
+.sidebar-logout:hover { color: var(--text-primary); }
+
+/* Status dots */
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.status-dot.green { background: var(--success); }
+.status-dot.red { background: var(--danger); }
+
+/* Pages */
+.page { max-width: 800px; }
+.page h2 { font-size: 20px; margin-bottom: 4px; }
+.page-subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
+.page-loading { color: var(--text-secondary); padding: 40px; text-align: center; }
+.empty-state { padding: 40px; text-align: center; color: var(--text-secondary); background: var(--bg-card); border-radius: 8px; }
+
+/* Engram cards */
+.engram-list { display: flex; flex-direction: column; gap: 8px; }
+.engram-card { background: var(--bg-card); border-radius: 8px; padding: 14px; border-left: 3px solid var(--border); cursor: pointer; transition: all 0.15s; }
+.engram-card:hover { background: var(--bg-card-hover); }
+.engram-card.expanded { border-left-color: var(--accent); border: 1px solid rgba(74,158,255,0.25); }
+.engram-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.engram-info { flex: 1; min-width: 0; }
+.engram-title { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.engram-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); margin-top: 4px; flex-wrap: wrap; }
+.engram-separator { opacity: 0.5; }
+.confidence-badge { padding: 1px 6px; border-radius: 3px; font-weight: 600; font-size: 10px; }
+.confidence-badge.high { background: rgba(78,255,74,0.15); color: var(--success); }
+.confidence-badge.medium { background: rgba(255,170,74,0.15); color: var(--warning); }
+.confidence-badge.low { background: rgba(255,74,74,0.15); color: var(--danger); }
+
+/* Engram actions */
+.engram-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.btn-approve, .btn-dismiss { border: none; padding: 5px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
+.btn-approve { background: rgba(78,255,74,0.15); color: var(--success); }
+.btn-dismiss { background: rgba(255,74,74,0.15); color: var(--danger); }
+.btn-approve:hover { opacity: 0.8; }
+.btn-dismiss:hover { opacity: 0.8; }
+.btn-approve:disabled, .btn-dismiss:disabled { opacity: 0.4; cursor: not-allowed; }
+.expanded-actions { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+/* Engram details */
+.engram-details { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.detail-section { margin-bottom: 10px; }
+.detail-section label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--tag-text); margin-bottom: 4px; letter-spacing: 0.5px; }
+.detail-section p { font-size: 13px; line-height: 1.5; color: var(--text-primary); }
+.raw-text { font-family: 'Fira Code', 'Consolas', monospace; font-size: 11px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; color: var(--text-secondary); overflow-x: auto; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
+.engram-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.tag { background: var(--tag-bg); color: var(--tag-text); padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+.sensitivity-badge { padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+.sensitivity-badge.safe { background: rgba(78,255,74,0.15); color: var(--success); }
+.sensitivity-badge.review { background: rgba(255,170,74,0.15); color: var(--warning); }
+.sensitivity-badge.block { background: rgba(255,74,74,0.15); color: var(--danger); }
+.sensitivity-reason { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+/* Login */
+.login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg-primary); }
+.login-card { background: var(--bg-secondary); border-radius: 12px; padding: 40px; width: 400px; max-width: 90vw; text-align: center; border: 1px solid var(--border); }
+.login-card h1 { font-size: 28px; margin-bottom: 4px; }
+.login-subtitle { color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; }
+.token-input { width: 100%; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: var(--text-primary); font-family: monospace; font-size: 12px; resize: vertical; }
+.token-input:focus { outline: none; border-color: var(--accent); }
+.btn-login { width: 100%; margin-top: 12px; padding: 10px; background: var(--accent); color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-login:hover { opacity: 0.9; }
+
+/* Search */
+.search-form { display: flex; gap: 8px; margin-bottom: 20px; }
+.search-input { flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; color: var(--text-primary); font-size: 14px; }
+.search-input:focus { outline: none; border-color: var(--accent); }
+.btn-search { background: var(--accent); color: white; border: none; border-radius: 6px; padding: 10px 20px; font-size: 14px; cursor: pointer; }
+.btn-search:disabled { opacity: 0.5; }
+
+/* Health */
+.health-section { margin-bottom: 24px; }
+.health-section h3 { font-size: 15px; margin-bottom: 12px; color: var(--text-secondary); }
+.health-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+.status-badge { display: flex; align-items: center; gap: 8px; background: var(--bg-card); padding: 10px 14px; border-radius: 6px; font-size: 13px; min-width: 160px; }
+.status-label { color: var(--text-secondary); text-transform: capitalize; }
+.status-value { margin-left: auto; font-weight: 600; }
+.status-value.ok { color: var(--success); }
+.status-value.error { color: var(--danger); }
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.metric { background: var(--bg-card); padding: 16px; border-radius: 8px; text-align: center; }
+.metric-value { display: block; font-size: 28px; font-weight: 700; color: var(--accent); }
+.metric-label { display: block; font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.system-info { background: var(--bg-card); padding: 14px; border-radius: 8px; font-size: 13px; }
+.system-info div { margin-bottom: 6px; }
+.info-label { color: var(--text-secondary); margin-right: 8px; }
+.text-ok { color: var(--success); }
+.text-error { color: var(--danger); }
