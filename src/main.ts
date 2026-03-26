@@ -8,6 +8,8 @@ import { GraphPoller } from './ingestion/graph-poller.js';
 import { Extractor } from './pipeline/extractor.js';
 import { Deduplicator } from './pipeline/deduplicator.js';
 import { PipelineProcessor } from './pipeline/processor.js';
+import { PipelineMetrics } from './pipeline/metrics.js';
+import { ConcurrencyLimiter } from './pipeline/concurrency-limiter.js';
 import { MuninnDBClient } from './storage/muninndb-client.js';
 import { VaultManager } from './storage/vault-manager.js';
 import { EngramIndex } from './storage/engram-index.js';
@@ -15,6 +17,7 @@ import { WebSocketManager } from './api/ws.js';
 import { createServer } from './api/server.js';
 import { createAuthVerifier } from './api/auth.js';
 import { RawCaptureSchema } from './types.js';
+import type { GraphUser } from './ingestion/graph-types.js';
 import OpenAI from 'openai';
 
 async function main(): Promise<void> {
@@ -48,6 +51,10 @@ async function main(): Promise<void> {
   // WebSocket manager
   const wsManager = new WebSocketManager();
 
+  // Pipeline metrics + concurrency limiter
+  const metrics = new PipelineMetrics();
+  const limiter = new ConcurrencyLimiter(config.maxConcurrentExtractions);
+
   // Pipeline processor
   const processor = new PipelineProcessor(
     extractor,
@@ -55,6 +62,8 @@ async function main(): Promise<void> {
     vaultManager,
     (topic, data) => nats.publish(topic, data),
     engramIndex,
+    limiter,
+    metrics,
   );
 
   // Subscribe to raw captures on NATS
@@ -72,6 +81,18 @@ async function main(): Promise<void> {
       }
     } catch (err) {
       console.error('Failed to process capture:', err);
+      metrics.recordError();
+
+      // Publish to dead letter topic
+      try {
+        nats.publish(TOPICS.DEAD_LETTER, {
+          capture: data,
+          error: err instanceof Error ? err.message : String(err),
+          timestamp: new Date().toISOString(),
+        });
+      } catch (dlErr) {
+        console.error('Failed to publish to dead letter:', dlErr);
+      }
     }
   });
 
@@ -80,12 +101,36 @@ async function main(): Promise<void> {
     nats.publish(TOPICS.RAW_CAPTURES, capture);
   });
 
-  // Poll on interval (placeholder user list — in production, fetch from Azure AD)
+  // Real poll loop: fetch users from Graph API and poll mail + teams
   const pollInterval = setInterval(async () => {
     try {
-      // TODO: Fetch user list from Azure AD or config
-      // For now, this is a placeholder
-      console.log('Poll cycle complete');
+      const usersResponse = await graphClient
+        .api('/users')
+        .select('id,displayName,mail,userPrincipalName')
+        .top(999)
+        .get();
+
+      const users: GraphUser[] = usersResponse.value ?? [];
+
+      for (const user of users) {
+        const email = user.mail || user.userPrincipalName;
+        if (!email) continue;
+
+        try {
+          await graphPoller.pollMail(user.id, email);
+        } catch (err) {
+          console.error(`Failed to poll mail for ${user.id}:`, err);
+        }
+
+        try {
+          await graphPoller.pollTeamsChat(user.id, email);
+        } catch (err) {
+          console.error(`Failed to poll teams for ${user.id}:`, err);
+        }
+      }
+
+      metrics.recordPoll();
+      console.log(`Poll cycle complete — ${users.length} users`);
     } catch (err) {
       console.error('Poll error:', err);
     }
@@ -106,6 +151,12 @@ async function main(): Promise<void> {
     engramIndex,
     wsManager,
     authVerifier,
+    metrics,
+    natsClient: nats,
+    config: {
+      llmBaseUrl: config.llm.baseUrl,
+      muninndbUrl: config.muninndb.url,
+    },
   });
 
   await server.listen({ port: 3001, host: '0.0.0.0' });

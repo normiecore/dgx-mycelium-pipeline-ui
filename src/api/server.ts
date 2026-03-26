@@ -7,6 +7,8 @@ import type { MuninnDBClient } from '../storage/muninndb-client.js';
 import type { VaultManager } from '../storage/vault-manager.js';
 import type { EngramIndex } from '../storage/engram-index.js';
 import type { WebSocketManager } from './ws.js';
+import type { PipelineMetrics } from '../pipeline/metrics.js';
+import type { NatsClient } from '../queue/nats-client.js';
 
 export interface ServerDeps {
   muninnClient: MuninnDBClient;
@@ -14,6 +16,18 @@ export interface ServerDeps {
   engramIndex: EngramIndex;
   wsManager: WebSocketManager;
   authVerifier: AuthVerifier;
+  metrics?: PipelineMetrics;
+  natsClient?: NatsClient;
+  config?: { llmBaseUrl: string; muninndbUrl: string };
+}
+
+async function checkUrl(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
@@ -21,8 +35,29 @@ export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
 
   await app.register(fastifyWebsocket);
 
-  // Health check — no auth
-  app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+  // Enriched health check — no auth
+  app.get('/api/health', async () => {
+    const checks: Record<string, boolean> = {};
+
+    if (deps.config?.llmBaseUrl) {
+      checks.vllm = await checkUrl(`${deps.config.llmBaseUrl}/health`);
+    }
+    if (deps.config?.muninndbUrl) {
+      checks.muninndb = await checkUrl(`${deps.config.muninndbUrl}/health`);
+    }
+    if (deps.natsClient) {
+      checks.nats = deps.natsClient.isConnected();
+    }
+
+    const allHealthy = Object.values(checks).every(Boolean);
+
+    return {
+      status: allHealthy ? 'ok' : 'degraded',
+      timestamp: new Date().toISOString(),
+      checks,
+      metrics: deps.metrics?.snapshot() ?? null,
+    };
+  });
 
   // Auth preHandler for all /api routes except health and /ws/
   app.addHook('preHandler', async (req, reply) => {
