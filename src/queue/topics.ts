@@ -1,9 +1,9 @@
 export const TOPICS = {
-  RAW_CAPTURES: 'harvester.raw-captures',
-  DEAD_LETTER: 'harvester.dead-letter',
-  ENGRAMS_APPROVED: 'harvester.engrams-approved',
+  RAW_CAPTURES: 'raw.captures',
+  DEAD_LETTER: 'pipeline.deadletter',
+  ENGRAMS_APPROVED: 'engrams.approved',
 } as const;
 
 export function topicForUser(userId: string): string {
-  return `${TOPICS.RAW_CAPTURES}.${userId}`;
+  return `engrams.pending.${userId}`;
 }
