@@ -1,0 +1,32 @@
+export interface GraphUser {
+  id: string;
+  displayName: string;
+  mail: string;
+  userPrincipalName: string;
+}
+
+export interface GraphDeltaResponse<T> {
+  '@odata.nextLink'?: string;
+  '@odata.deltaLink'?: string;
+  value: T[];
+}
+
+export interface GraphMessage {
+  id: string;
+  subject: string;
+  bodyPreview: string;
+  body?: { contentType: string; content: string };
+  from?: { emailAddress: { name: string; address: string } };
+  receivedDateTime: string;
+  isRead?: boolean;
+}
+
+export interface GraphChatMessage {
+  id: string;
+  messageType: string;
+  body: { contentType: string; content: string };
+  from?: { user?: { displayName: string; id: string } };
+  createdDateTime: string;
+  chatId?: string;
+  channelIdentity?: { teamId: string; channelId: string };
+}
