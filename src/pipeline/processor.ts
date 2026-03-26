@@ -6,6 +6,8 @@ import type { VaultManager } from '../storage/vault-manager.js';
 import type { EngramIndex } from '../storage/engram-index.js';
 import type { RawCapture } from '../types.js';
 import { topicForUser } from '../queue/topics.js';
+import type { ConcurrencyLimiter } from './concurrency-limiter.js';
+import type { PipelineMetrics } from './metrics.js';
 
 export interface ProcessResult {
   action: 'stored' | 'blocked' | 'deduplicated' | 'error';
@@ -19,25 +21,32 @@ export class PipelineProcessor {
     private vaultManager: VaultManager,
     private publishToNats: (topic: string, data: unknown) => void,
     private engramIndex?: EngramIndex,
+    private limiter?: ConcurrencyLimiter,
+    private metrics?: PipelineMetrics,
   ) {}
 
   async process(capture: RawCapture): Promise<ProcessResult> {
     // Stage 1: Rules-based sensitivity pre-filter (must run first for audit trail)
     const filterResult = sensitivityPreFilter(capture);
     if (filterResult.action === 'block') {
+      this.metrics?.recordBlocked();
       return { action: 'blocked', reason: `pre-filter: ${filterResult.reason}` };
     }
 
     // Stage 2: Dedup check (before LLM call to save compute)
     if (this.deduplicator.isDuplicate(capture.userId, capture.rawContent)) {
+      this.metrics?.recordDeduplicated();
       return { action: 'deduplicated' };
     }
 
-    // Stage 3: LLM extraction + sensitivity
-    const extraction = await this.extractor.extract(capture);
+    // Stage 3: LLM extraction + sensitivity (with optional concurrency limiting)
+    const extraction = this.limiter
+      ? await this.limiter.run(() => this.extractor.extract(capture))
+      : await this.extractor.extract(capture);
 
     // Stage 4: LLM sensitivity gate
     if (extraction.sensitivity.classification === 'block') {
+      this.metrics?.recordBlocked();
       return { action: 'blocked', reason: `llm: ${extraction.sensitivity.reasoning}` };
     }
 
@@ -60,6 +69,7 @@ export class PipelineProcessor {
 
     // Stage 6: Notify
     this.publishToNats(topicForUser(capture.userId), engram);
+    this.metrics?.recordProcessed();
     return { action: 'stored' };
   }
 }

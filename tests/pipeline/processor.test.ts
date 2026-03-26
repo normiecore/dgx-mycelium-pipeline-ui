@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PipelineProcessor } from '../../src/pipeline/processor.js';
+import { PipelineMetrics } from '../../src/pipeline/metrics.js';
+import { ConcurrencyLimiter } from '../../src/pipeline/concurrency-limiter.js';
 import type { RawCapture } from '../../src/types.js';
 
 describe('PipelineProcessor', () => {
@@ -9,6 +11,8 @@ describe('PipelineProcessor', () => {
   let mockVaultManager: any;
   let mockNatsPublish: ReturnType<typeof vi.fn>;
   let mockEngramIndex: any;
+  let metrics: PipelineMetrics;
+  let limiter: ConcurrencyLimiter;
 
   const capture: RawCapture = {
     id: 'cap-1', userId: 'user-abc', userEmail: 'james@example.com',
@@ -24,7 +28,9 @@ describe('PipelineProcessor', () => {
     mockVaultManager = { storePending: vi.fn().mockResolvedValue(undefined) };
     mockNatsPublish = vi.fn();
     mockEngramIndex = { upsert: vi.fn() };
-    processor = new PipelineProcessor(mockExtractor, mockDeduplicator, mockVaultManager, mockNatsPublish, mockEngramIndex);
+    metrics = new PipelineMetrics();
+    limiter = new ConcurrencyLimiter(8);
+    processor = new PipelineProcessor(mockExtractor, mockDeduplicator, mockVaultManager, mockNatsPublish, mockEngramIndex, limiter, metrics);
   });
 
   it('processes safe capture end-to-end', async () => {
@@ -63,5 +69,21 @@ describe('PipelineProcessor', () => {
     mockExtractor.extract.mockResolvedValue({ summary: 'Mixed content', tags: [], confidence: 0.6, sensitivity: { classification: 'review', reasoning: 'Mixed' } });
     const result = await processor.process(capture);
     expect(result.action).toBe('stored');
+  });
+
+  it('increments metrics on stored capture', async () => {
+    await processor.process(capture);
+    const snap = metrics.snapshot();
+    expect(snap.processed_total).toBe(1);
+    expect(snap.blocked_total).toBe(0);
+    expect(snap.deduplicated_total).toBe(0);
+  });
+
+  it('increments blocked metric on pre-filter block', async () => {
+    const sensitive: RawCapture = { ...capture, rawContent: JSON.stringify({ subject: 'Your Salary Review', body: 'details' }) };
+    await processor.process(sensitive);
+    const snap = metrics.snapshot();
+    expect(snap.blocked_total).toBe(1);
+    expect(snap.processed_total).toBe(0);
   });
 });
