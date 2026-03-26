@@ -6,6 +6,11 @@ const ConfigSchema = z.object({
     clientId: z.string().min(1),
     clientSecret: z.string().min(1),
   }),
+  auth: z.object({
+    mode: z.enum(['dev', 'azure']),
+    devSecret: z.string().optional(),
+    azureAdAudience: z.string().optional(),
+  }),
   natsUrl: z.string().min(1),
   muninndb: z.object({
     url: z.string().url(),
@@ -27,6 +32,11 @@ export function loadConfig(): Config {
       tenantId: process.env.AZURE_TENANT_ID,
       clientId: process.env.AZURE_CLIENT_ID,
       clientSecret: process.env.AZURE_CLIENT_SECRET,
+    },
+    auth: {
+      mode: process.env.AUTH_MODE || 'dev',
+      devSecret: process.env.JWT_DEV_SECRET,
+      azureAdAudience: process.env.AZURE_AD_AUDIENCE,
     },
     natsUrl: process.env.NATS_URL,
     muninndb: {

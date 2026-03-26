@@ -51,4 +51,25 @@ describe('loadConfig', () => {
     expect(config.pollIntervalMs).toBe(30000);
     expect(config.maxConcurrentExtractions).toBe(8);
   });
+
+  it('loads auth config in dev mode', () => {
+    Object.assign(process.env, { ...VALID_ENV, AUTH_MODE: 'dev', JWT_DEV_SECRET: 'test-secret' });
+    const config = loadConfig();
+    expect(config.auth.mode).toBe('dev');
+    expect(config.auth.devSecret).toBe('test-secret');
+  });
+
+  it('loads auth config in azure mode', () => {
+    Object.assign(process.env, { ...VALID_ENV, AUTH_MODE: 'azure', AZURE_AD_AUDIENCE: 'api://my-app' });
+    const config = loadConfig();
+    expect(config.auth.mode).toBe('azure');
+    expect(config.auth.azureAdAudience).toBe('api://my-app');
+  });
+
+  it('defaults to dev mode when AUTH_MODE not set', () => {
+    Object.assign(process.env, VALID_ENV);
+    delete process.env.AUTH_MODE;
+    const config = loadConfig();
+    expect(config.auth.mode).toBe('dev');
+  });
 });
