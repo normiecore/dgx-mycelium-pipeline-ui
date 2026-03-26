@@ -7,8 +7,11 @@ import type {
   GraphMessage,
   GraphChatMessage,
 } from './graph-types.js';
+import { retryWithBackoff, RetryableError } from './graph-retry.js';
 
 export type PublishFn = (capture: RawCapture) => void;
+
+const RETRY_OPTS = { maxRetries: 3, baseDelayMs: 1000 };
 
 export class GraphPoller {
   constructor(
@@ -17,67 +20,98 @@ export class GraphPoller {
     private publish: PublishFn,
   ) {}
 
+  private async fetchWithRetry<T>(url: string): Promise<T> {
+    return retryWithBackoff(
+      async () => {
+        try {
+          return await this.graphClient.api(url).get();
+        } catch (err: any) {
+          if (err.statusCode === 429 || err.statusCode === 503) {
+            const retryAfter = err.headers?.['retry-after']
+              ? Number(err.headers['retry-after'])
+              : undefined;
+            throw new RetryableError(err.statusCode, err.message, retryAfter);
+          }
+          throw err;
+        }
+      },
+      RETRY_OPTS,
+    );
+  }
+
   async pollMail(userId: string, userEmail: string): Promise<void> {
-    const existing = this.deltaStore.getDeltaLink(userId, 'mail');
-    const url =
-      existing ?? `/users/${userId}/mailFolders/inbox/messages/delta`;
+    let url: string | undefined =
+      this.deltaStore.getDeltaLink(userId, 'mail') ??
+      `/users/${userId}/mailFolders/inbox/messages/delta`;
+    let deltaLink: string | undefined;
 
-    const response: GraphDeltaResponse<GraphMessage> =
-      await this.graphClient.api(url).get();
+    while (url) {
+      const response: GraphDeltaResponse<GraphMessage> =
+        await this.fetchWithRetry(url);
 
-    for (const msg of response.value) {
-      const capture: RawCapture = {
-        id: randomUUID(),
-        userId,
-        userEmail,
-        sourceType: 'graph_email',
-        sourceApp: 'outlook',
-        capturedAt: msg.receivedDateTime,
-        rawContent: JSON.stringify({
-          subject: msg.subject,
-          bodyPreview: msg.bodyPreview,
-          from: msg.from?.emailAddress,
-        }),
-        metadata: { messageId: msg.id },
-      };
-      this.publish(capture);
+      for (const msg of response.value) {
+        const capture: RawCapture = {
+          id: randomUUID(),
+          userId,
+          userEmail,
+          sourceType: 'graph_email',
+          sourceApp: 'outlook',
+          capturedAt: msg.receivedDateTime,
+          rawContent: JSON.stringify({
+            subject: msg.subject,
+            bodyPreview: msg.bodyPreview,
+            from: msg.from?.emailAddress,
+          }),
+          metadata: { messageId: msg.id },
+        };
+        this.publish(capture);
+      }
+
+      deltaLink = response['@odata.deltaLink'];
+      url = response['@odata.nextLink'];
     }
 
-    if (response['@odata.deltaLink']) {
-      this.deltaStore.setDeltaLink(userId, 'mail', response['@odata.deltaLink']);
+    if (deltaLink) {
+      this.deltaStore.setDeltaLink(userId, 'mail', deltaLink);
     }
   }
 
   async pollTeamsChat(userId: string, userEmail: string): Promise<void> {
-    const existing = this.deltaStore.getDeltaLink(userId, 'teams');
-    const url =
-      existing ?? `/users/${userId}/chats/getAllMessages/delta`;
+    let url: string | undefined =
+      this.deltaStore.getDeltaLink(userId, 'teams') ??
+      `/users/${userId}/chats/getAllMessages/delta`;
+    let deltaLink: string | undefined;
 
-    const response: GraphDeltaResponse<GraphChatMessage> =
-      await this.graphClient.api(url).get();
+    while (url) {
+      const response: GraphDeltaResponse<GraphChatMessage> =
+        await this.fetchWithRetry(url);
 
-    for (const msg of response.value) {
-      if (msg.messageType !== 'message') continue;
+      for (const msg of response.value) {
+        if (msg.messageType !== 'message') continue;
 
-      const capture: RawCapture = {
-        id: randomUUID(),
-        userId,
-        userEmail,
-        sourceType: 'graph_teams',
-        sourceApp: 'teams',
-        capturedAt: msg.createdDateTime,
-        rawContent: JSON.stringify({
-          body: msg.body?.content,
-          from: msg.from?.user?.displayName,
-          chatId: msg.chatId,
-        }),
-        metadata: { messageId: msg.id },
-      };
-      this.publish(capture);
+        const capture: RawCapture = {
+          id: randomUUID(),
+          userId,
+          userEmail,
+          sourceType: 'graph_teams',
+          sourceApp: 'teams',
+          capturedAt: msg.createdDateTime,
+          rawContent: JSON.stringify({
+            body: msg.body?.content,
+            from: msg.from?.user?.displayName,
+            chatId: msg.chatId,
+          }),
+          metadata: { messageId: msg.id },
+        };
+        this.publish(capture);
+      }
+
+      deltaLink = response['@odata.deltaLink'];
+      url = response['@odata.nextLink'];
     }
 
-    if (response['@odata.deltaLink']) {
-      this.deltaStore.setDeltaLink(userId, 'teams', response['@odata.deltaLink']);
+    if (deltaLink) {
+      this.deltaStore.setDeltaLink(userId, 'teams', deltaLink);
     }
   }
 }

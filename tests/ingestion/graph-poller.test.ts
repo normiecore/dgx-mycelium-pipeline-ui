@@ -93,4 +93,51 @@ describe('GraphPoller', () => {
     expect(published).toHaveLength(1);
     expect(published[0].rawContent).toContain('Follow up');
   });
+
+  it('follows @odata.nextLink for pagination', async () => {
+    const paginatedClient = makeMockGraphClient({
+      '/users/user-1/mailFolders/inbox/messages/delta': {
+        '@odata.nextLink': 'https://graph.microsoft.com/delta?page=2',
+        value: [
+          {
+            id: 'msg-page1',
+            subject: 'Page 1 message',
+            bodyPreview: 'First page content.',
+            from: { emailAddress: { name: 'Alice', address: 'alice@co.com' } },
+            receivedDateTime: '2026-03-26T10:00:00Z',
+          },
+        ],
+      } satisfies GraphDeltaResponse<GraphMessage>,
+      'https://graph.microsoft.com/delta?page=2': {
+        '@odata.deltaLink': 'https://graph.microsoft.com/delta?token=final',
+        value: [
+          {
+            id: 'msg-page2',
+            subject: 'Page 2 message',
+            bodyPreview: 'Second page content.',
+            from: { emailAddress: { name: 'Bob', address: 'bob@co.com' } },
+            receivedDateTime: '2026-03-26T11:00:00Z',
+          },
+        ],
+      } satisfies GraphDeltaResponse<GraphMessage>,
+    });
+    const paginatedDeltaStore = makeMockDeltaStore();
+    const paginatedPublished: RawCapture[] = [];
+    const paginatedPoller = new GraphPoller(
+      paginatedClient as any,
+      paginatedDeltaStore as any,
+      (capture) => { paginatedPublished.push(capture); },
+    );
+
+    await paginatedPoller.pollMail('user-1', 'user1@co.com');
+
+    expect(paginatedPublished).toHaveLength(2);
+    expect(paginatedPublished[0].rawContent).toContain('Page 1 message');
+    expect(paginatedPublished[1].rawContent).toContain('Page 2 message');
+    expect(paginatedDeltaStore.setDeltaLink).toHaveBeenCalledWith(
+      'user-1',
+      'mail',
+      'https://graph.microsoft.com/delta?token=final',
+    );
+  });
 });
