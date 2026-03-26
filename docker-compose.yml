@@ -1,0 +1,80 @@
+services:
+  nats:
+    image: nats:2.10-alpine
+    ports:
+      - "4222:4222"
+    volumes:
+      - nats-data:/data
+    command: ["--jetstream", "--store_dir=/data"]
+    healthcheck:
+      test: ["CMD", "nats-server", "--health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  vllm:
+    image: vllm/vllm-openai:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command:
+      - --model=meta-llama/Llama-3.1-8B-Instruct-AWQ
+      - --quantization=awq
+      - --max-model-len=4096
+      - --gpu-memory-utilization=0.85
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  muninndb:
+    image: muninndb:latest
+    ports:
+      - "3030:3030"
+    volumes:
+      - muninndb-data:/data
+    environment:
+      - MUNINNDB_API_KEY=${MUNINNDB_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3030/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  pipeline:
+    build: .
+    ports:
+      - "3001:3001"
+    depends_on:
+      nats:
+        condition: service_healthy
+      vllm:
+        condition: service_healthy
+      muninndb:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      - NATS_URL=nats://nats:4222
+      - MUNINNDB_URL=http://muninndb:3030
+      - LLM_BASE_URL=http://vllm:8000/v1
+      - LLM_MODEL=meta-llama/Llama-3.1-8B-Instruct-AWQ
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  nats-data:
+  model-cache:
+  muninndb-data:
