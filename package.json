@@ -1,0 +1,34 @@
+{
+  "name": "knowledge-harvester-pipeline",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/src/main.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/src/main.js",
+    "dev": "npx tsx src/main.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.5.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.1"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.13.1",
+    "@fastify/websocket": "^11.2.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "better-sqlite3": "^12.8.0",
+    "dotenv": "^17.3.1",
+    "fastify": "^5.8.4",
+    "nats": "^2.29.3",
+    "openai": "^6.33.0",
+    "zod": "^4.3.6"
+  }
+}
