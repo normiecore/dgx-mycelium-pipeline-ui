@@ -1,5 +1,8 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
+import fastifyStatic from '@fastify/static';
 import type { AuthVerifier } from './auth.js';
 import { engramRoutes } from './routes/engrams.js';
 import { statsRoutes } from './routes/stats.js';
@@ -34,6 +37,14 @@ export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
 
   await app.register(fastifyWebsocket);
+
+  // Serve frontend static files
+  await app.register(fastifyStatic, {
+    root: path.join(process.cwd(), 'frontend-dist'),
+    prefix: '/',
+    wildcard: false,
+    decorateReply: true,
+  });
 
   // Enriched health check — no auth
   app.get('/api/health', async () => {
@@ -106,6 +117,15 @@ export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
       });
     } catch {
       socket.close(4001, 'Invalid authorization');
+    }
+  });
+
+  // SPA fallback — serve index.html for non-API/WS routes
+  app.setNotFoundHandler((req, reply) => {
+    if (req.url.startsWith('/api/') || req.url.startsWith('/ws/')) {
+      reply.code(404).send({ error: 'Not found' });
+    } else {
+      reply.sendFile('index.html');
     }
   });
 
