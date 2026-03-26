@@ -16,7 +16,7 @@ fi
 export NATS_URL="${NATS_URL:-nats://localhost:4222}"
 export MUNINNDB_URL="${MUNINNDB_URL:-http://localhost:3030}"
 export LLM_BASE_URL="${LLM_BASE_URL:-http://localhost:8000/v1}"
-export LLM_MODEL="${LLM_MODEL:-meta-llama/Llama-3.1-8B-Instruct-AWQ}"
+export LLM_MODEL="${LLM_MODEL:-hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4}"
 export AUTH_MODE="${AUTH_MODE:-dev}"
 export JWT_DEV_SECRET="${JWT_DEV_SECRET:-mycelium-dev-secret}"
 export POLL_INTERVAL_MS="${POLL_INTERVAL_MS:-30000}"

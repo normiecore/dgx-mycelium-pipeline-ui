@@ -26,7 +26,7 @@ services:
               count: 1
               capabilities: [gpu]
     command:
-      - --model=meta-llama/Llama-3.1-8B-Instruct-AWQ
+      - --model=hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4
       - --quantization=awq
       - --max-model-len=4096
       - --gpu-memory-utilization=0.85
@@ -67,7 +67,7 @@ services:
       - NATS_URL=nats://nats:4222
       - MUNINNDB_URL=http://muninndb:3030
       - LLM_BASE_URL=http://vllm:8000/v1
-      - LLM_MODEL=meta-llama/Llama-3.1-8B-Instruct-AWQ
+      - LLM_MODEL=hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
       interval: 10s
