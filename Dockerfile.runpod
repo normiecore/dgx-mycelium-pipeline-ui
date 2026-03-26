@@ -45,11 +45,19 @@ RUN cd frontend && npm run build
 COPY prompts/ ./prompts/
 
 # Create data directories
-RUN mkdir -p /data/nats /data/muninndb /data/pipeline
+RUN mkdir -p /data/nats /data/muninndb /data/pipeline /data/huggingface
+
+# Pre-download the model so first startup is fast
+ENV HF_HOME=/data/huggingface
+RUN python3 -c "from huggingface_hub import snapshot_download; snapshot_download('TheBloke/Llama-2-7B-AWQ')" || echo "Model pre-download skipped (will download on first run)"
 
 # Copy startup script
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
+
+# RunPod mounts /workspace as persistent storage
+# Map data dir to /workspace if available, /data otherwise
+ENV DATA_DIR=/data
 
 EXPOSE 3001 4222 8000
 

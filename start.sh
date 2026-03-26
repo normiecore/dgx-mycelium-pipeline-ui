@@ -5,20 +5,44 @@ echo "============================================"
 echo "  🍄 Mycelium Pipeline — Starting Services"
 echo "============================================"
 
-# Load .env if it exists
+# Load .env if it exists (RunPod can also pass env vars via template)
 if [ -f /app/.env ]; then
-  export $(grep -v '^#' /app/.env | xargs)
+  set -a
+  source /app/.env
+  set +a
 fi
 
-# Override service URLs for local mode
+# Defaults for all config
 export NATS_URL="${NATS_URL:-nats://localhost:4222}"
 export MUNINNDB_URL="${MUNINNDB_URL:-http://localhost:3030}"
 export LLM_BASE_URL="${LLM_BASE_URL:-http://localhost:8000/v1}"
 export LLM_MODEL="${LLM_MODEL:-meta-llama/Llama-3.1-8B-Instruct-AWQ}"
+export AUTH_MODE="${AUTH_MODE:-dev}"
+export JWT_DEV_SECRET="${JWT_DEV_SECRET:-mycelium-dev-secret}"
+export POLL_INTERVAL_MS="${POLL_INTERVAL_MS:-30000}"
+export MAX_CONCURRENT_EXTRACTIONS="${MAX_CONCURRENT_EXTRACTIONS:-8}"
+export MUNINNDB_API_KEY="${MUNINNDB_API_KEY:-changeme}"
+
+# Check required Azure vars
+if [ -z "$AZURE_TENANT_ID" ] || [ -z "$AZURE_CLIENT_ID" ] || [ -z "$AZURE_CLIENT_SECRET" ]; then
+  echo "⚠ WARNING: Azure AD credentials not set. Graph API polling will fail."
+  echo "  Set AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET"
+  echo "  via RunPod template env vars or /app/.env file"
+  echo ""
+  # Don't exit — let the pipeline start anyway so you can access the UI
+fi
+
+# Use /workspace for persistent storage if available (RunPod mounts it)
+DATA_DIR="${DATA_DIR:-/data}"
+mkdir -p "$DATA_DIR/nats" "$DATA_DIR/pipeline"
+
+# Cache HuggingFace models to persistent volume
+export HF_HOME="${DATA_DIR}/huggingface"
+mkdir -p "$HF_HOME"
 
 # ---- Start NATS ----
 echo "[1/3] Starting NATS server..."
-nats-server --jetstream --store_dir=/data/nats --port=4222 &
+nats-server --jetstream --store_dir="$DATA_DIR/nats" --port=4222 --http_port=8222 &
 NATS_PID=$!
 
 # Wait for NATS
