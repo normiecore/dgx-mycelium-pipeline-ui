@@ -71,37 +71,53 @@ export async function getHealth(): Promise<any> {
   return res.json();
 }
 
-export function connectWebSocket(onMessage: (data: any) => void): WebSocket {
-  const token = getToken();
-  if (!token) {
-    // No token means the user is not logged in; redirect instead of
-    // opening an unauthenticated socket that will be immediately closed.
-    window.location.href = '/login';
-    // Return a dummy WebSocket-shaped object so callers don't crash.
-    return new WebSocket(`wss://localhost/__never`);
-  }
+export interface WebSocketHandle {
+  close(): void;
+}
 
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/ws/engrams?token=${encodeURIComponent(token)}`;
-  const ws = new WebSocket(wsUrl);
+export function connectWebSocket(onMessage: (data: any) => void): WebSocketHandle {
+  let currentWs: WebSocket | null = null;
+  let closed = false;
 
-  ws.onmessage = (e) => {
-    try {
-      const data = JSON.parse(e.data);
-      onMessage(data);
-    } catch {}
-  };
+  function connect() {
+    if (closed) return;
 
-  ws.onclose = (event) => {
-    // 4001 = server rejected auth; redirect to login instead of reconnecting.
-    if (event.code === 4001) {
-      clearToken();
+    const token = getToken();
+    if (!token) {
       window.location.href = '/login';
       return;
     }
-    // Normal reconnect for transient failures.
-    setTimeout(() => connectWebSocket(onMessage), 3000);
-  };
 
-  return ws;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/engrams?token=${encodeURIComponent(token)}`;
+    const ws = new WebSocket(wsUrl);
+    currentWs = ws;
+
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        onMessage(data);
+      } catch {}
+    };
+
+    ws.onclose = (event) => {
+      if (closed) return;
+      if (event.code === 4001) {
+        clearToken();
+        window.location.href = '/login';
+        return;
+      }
+      setTimeout(connect, 3000);
+    };
+  }
+
+  connect();
+
+  return {
+    close() {
+      closed = true;
+      currentWs?.close();
+      currentWs = null;
+    },
+  };
 }
