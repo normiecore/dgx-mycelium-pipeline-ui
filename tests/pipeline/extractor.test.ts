@@ -69,6 +69,46 @@ describe('Extractor', () => {
     expect(callArgs.messages[1].content).toContain('Subsea connector specs');
   });
 
+  it('strips base64 screenshots before sending to LLM', async () => {
+    const validResponse = JSON.stringify({
+      summary: 'User working on FEA report',
+      tags: ['engineering'],
+      confidence: 0.6,
+      sensitivity: { classification: 'safe', reasoning: 'Technical work' },
+    });
+
+    const mockClient = makeMockOpenAI(validResponse);
+    const extractor = new Extractor(mockClient as any);
+
+    const screenshotCapture: RawCapture = {
+      id: 'cap-ss',
+      userId: 'user-1',
+      userEmail: 'user@co.com',
+      sourceType: 'desktop_screenshot',
+      sourceApp: 'knowledge-harvester-desktop',
+      capturedAt: '2026-03-27T10:00:00Z',
+      rawContent: JSON.stringify({
+        windowTitle: 'FEA Report - Subsea Connector v3.docx - Word',
+        windowOwner: 'Microsoft Word',
+        screenshotBase64: 'iVBORw0KGgoAAAANSUhEUg' + 'A'.repeat(10000), // large base64
+        capturedAt: '2026-03-27T10:00:00Z',
+      }),
+      metadata: {},
+    };
+
+    await extractor.extract(screenshotCapture);
+
+    const callArgs = mockClient.chat.completions.create.mock.calls[0][0];
+    const sentContent = callArgs.messages[1].content;
+    // Should contain window context
+    expect(sentContent).toContain('FEA Report');
+    expect(sentContent).toContain('Microsoft Word');
+    // Should NOT contain base64 blob
+    expect(sentContent).not.toContain('iVBORw0KGgo');
+    // Should be reasonably short (not 10KB+)
+    expect(sentContent.length).toBeLessThan(500);
+  });
+
   it('throws on invalid LLM JSON response', async () => {
     const mockClient = makeMockOpenAI('this is not valid json at all');
     const extractor = new Extractor(mockClient as any, 'gpt-4o-mini', 1, 10);

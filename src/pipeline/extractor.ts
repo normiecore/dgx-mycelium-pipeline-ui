@@ -91,13 +91,33 @@ export class Extractor {
     );
   }
 
+  /**
+   * Prepare the raw content for LLM extraction.
+   * Strips large binary data (base64 screenshots) that would waste tokens
+   * and cause extraction failures, keeping only the textual context.
+   */
+  private prepareContent(rawContent: string): string {
+    try {
+      const parsed = JSON.parse(rawContent);
+      if (parsed.screenshotBase64) {
+        // Desktop screenshot — send only window context, not the image
+        const { screenshotBase64: _, ...context } = parsed;
+        return JSON.stringify(context);
+      }
+      return rawContent;
+    } catch {
+      return rawContent;
+    }
+  }
+
   /** Single extraction attempt — no retry logic here. */
   private async attemptExtraction(capture: RawCapture): Promise<ExtractionResult> {
+    const userContent = this.prepareContent(capture.rawContent);
     const response = await this.client.chat.completions.create({
       model: this.model,
       messages: [
         { role: 'system', content: this.systemPrompt },
-        { role: 'user', content: capture.rawContent },
+        { role: 'user', content: userContent },
       ],
       temperature: 0.2,
     });
