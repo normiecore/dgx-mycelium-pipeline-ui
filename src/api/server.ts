@@ -8,6 +8,7 @@ import rateLimit from '@fastify/rate-limit';
 import type { AuthVerifier } from './auth.js';
 import { engramRoutes } from './routes/engrams.js';
 import { captureRoutes } from './routes/captures.js';
+import { deadLetterRoutes } from './routes/dead-letters.js';
 import { statsRoutes } from './routes/stats.js';
 import type { MuninnDBClient } from '../storage/muninndb-client.js';
 import type { VaultManager } from '../storage/vault-manager.js';
@@ -26,6 +27,7 @@ export interface ServerDeps {
   metrics?: PipelineMetrics;
   natsClient?: NatsClient;
   userCache?: UserCache;
+  deadLetterStore?: import('../storage/dead-letter-store.js').DeadLetterStore;
   config?: { llmBaseUrl: string; muninndbUrl: string };
 }
 
@@ -114,6 +116,12 @@ export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
   if (deps.natsClient) {
     await app.register(captureRoutes, {
       natsClient: deps.natsClient,
+    });
+  }
+
+  if (deps.deadLetterStore) {
+    await app.register(deadLetterRoutes, {
+      deadLetterStore: deps.deadLetterStore,
     });
   }
 

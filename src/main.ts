@@ -21,6 +21,7 @@ import { RawCaptureSchema } from './types.js';
 import { rebuildIndex } from './storage/rebuild-index.js';
 import type { GraphUser, GraphPagedResponse } from './ingestion/graph-types.js';
 import { UserCache } from './ingestion/user-cache.js';
+import { DeadLetterStore } from './storage/dead-letter-store.js';
 import OpenAI from 'openai';
 import type { Client } from '@microsoft/microsoft-graph-client';
 
@@ -70,6 +71,7 @@ async function main(): Promise<void> {
   // SQLite-backed components
   const deduplicator = new Deduplicator('dedup-state.db');
   const engramIndex = new EngramIndex('engram-index.db');
+  const deadLetterStore = new DeadLetterStore('dead-letter.db');
 
   // MuninnDB + VaultManager
   const muninnClient = new MuninnDBClient(config.muninndb.url, config.muninndb.apiKey);
@@ -141,6 +143,22 @@ async function main(): Promise<void> {
       } catch (dlErr) {
         logger.error({ err: dlErr }, 'Failed to publish to dead letter');
       }
+    }
+  });
+
+  // Subscribe to dead-letter topic and persist for review
+  nats.subscribe(TOPICS.DEAD_LETTER, async (data) => {
+    try {
+      const dl = data as { capture?: { id?: string }; error?: string; attempts?: number };
+      deadLetterStore.insert(
+        dl.capture?.id ?? 'unknown',
+        dl.error ?? 'unknown error',
+        dl.attempts ?? 0,
+        dl.capture ?? data,
+      );
+      logger.warn({ captureId: dl.capture?.id }, 'Dead letter stored');
+    } catch (err) {
+      logger.error({ err }, 'Failed to store dead letter');
     }
   });
 
@@ -246,6 +264,7 @@ async function main(): Promise<void> {
     metrics,
     natsClient: nats,
     userCache,
+    deadLetterStore,
     config: {
       llmBaseUrl: config.llm.baseUrl,
       muninndbUrl: config.muninndb.url,
@@ -265,6 +284,7 @@ async function main(): Promise<void> {
     deltaStore.close();
     deduplicator.close();
     engramIndex.close();
+    deadLetterStore.close();
     logger.info('Shutdown complete');
     process.exit(0);
   };

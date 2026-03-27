@@ -7,6 +7,7 @@ import Queue from './pages/Queue';
 import Approved from './pages/Approved';
 import Search from './pages/Search';
 import Health from './pages/Health';
+import DeadLetters from './pages/DeadLetters';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) return <Navigate to="/login" replace />;
@@ -71,6 +72,7 @@ export default function App() {
                   <Route path="/approved" element={<Approved />} />
                   <Route path="/search" element={<Search />} />
                   <Route path="/health" element={<Health />} />
+                  <Route path="/dead-letters" element={<DeadLetters />} />
                 </Routes>
               </main>
             </div>

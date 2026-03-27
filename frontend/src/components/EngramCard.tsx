@@ -1,6 +1,22 @@
 import React, { useState } from 'react';
 import { patchEngram } from '../api';
 
+const SOURCE_LABELS: Record<string, string> = {
+  graph_email: 'Email',
+  graph_teams: 'Teams',
+  graph_calendar: 'Calendar',
+  graph_document: 'OneDrive',
+  graph_task: 'To-Do',
+  desktop_screenshot: 'Screenshot',
+  desktop_window: 'Desktop',
+};
+
+function getSourceLabel(sourceType?: string, sourceApp?: string): string {
+  if (sourceType && SOURCE_LABELS[sourceType]) return SOURCE_LABELS[sourceType];
+  if (sourceType) return sourceType.replace(/^(graph_|desktop_)/, '');
+  return sourceApp || '—';
+}
+
 interface EngramCardProps {
   engram: any;
   showActions?: boolean;
@@ -59,7 +75,7 @@ export default function EngramCard({ engram, showActions = true, onAction, focus
         <div className="engram-info">
           <h3 className="engram-title">{engram.concept || 'Untitled'}</h3>
           <div className="engram-meta">
-            <span className="engram-source">{engram.sourceType?.replace('graph_', '') || engram.source_app || '—'}</span>
+            <span className={`engram-source source-${engram.sourceType?.startsWith('desktop_') ? 'desktop' : 'cloud'}`}>{getSourceLabel(engram.sourceType, engram.source_app)}</span>
             <span className="engram-separator">&bull;</span>
             <span>{timeAgo(engram.capturedAt || engram.captured_at || new Date().toISOString())}</span>
             <span className="engram-separator">&bull;</span>

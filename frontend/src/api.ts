@@ -14,6 +14,22 @@ export function isAuthenticated(): boolean {
   return !!getToken();
 }
 
+export async function fetchWithAuth(path: string, opts?: RequestInit): Promise<Response> {
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      'Content-Type': 'application/json',
+      ...opts?.headers,
+    },
+  });
+  if (res.status === 401) {
+    clearToken();
+    window.location.href = '/login';
+  }
+  return res;
+}
+
 async function fetchAPI(path: string, opts?: RequestInit): Promise<any> {
   const res = await fetch(path, {
     ...opts,

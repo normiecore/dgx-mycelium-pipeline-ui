@@ -36,6 +36,9 @@ export default function Sidebar() {
         <NavLink to="/health" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <span>Health</span>
         </NavLink>
+        <NavLink to="/dead-letters" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <span>Dead Letters</span>
+        </NavLink>
       </nav>
 
       <div className="sidebar-footer">
