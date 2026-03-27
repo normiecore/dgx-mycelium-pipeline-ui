@@ -87,6 +87,7 @@ export class PipelineProcessor {
           capturedAt: engram.captured_at,
           sourceType: engram.source_type,
           confidence: engram.confidence,
+          tags: engram.tags,
         });
       } catch (indexErr) {
         console.warn(

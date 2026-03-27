@@ -33,8 +33,31 @@ export async function engramRoutes(
 
     if (q) {
       const vault = VM.personalVault(user.userId);
-      const result = await muninnClient.recall(vault, q);
-      return { engrams: result.engrams ?? [] };
+
+      // Hybrid search: run semantic (MuninnDB) and local FTS5 in parallel
+      const [semanticResult, ftsResults] = await Promise.all([
+        muninnClient.recall(vault, q).catch(() => ({ engrams: [] as Array<{ id: string; concept: string }> })),
+        Promise.resolve(engramIndex.search(user.userId, q, maxResults)),
+      ]);
+
+      const semanticEngrams = semanticResult.engrams ?? [];
+
+      // Merge: start with semantic results (better ranking), then append
+      // FTS5 matches that were not already returned by semantic search.
+      const seenIds = new Set<string>(semanticEngrams.map((e) => e.id));
+      const merged = [...semanticEngrams];
+
+      for (const ftsRow of ftsResults) {
+        if (!seenIds.has(ftsRow.id)) {
+          seenIds.add(ftsRow.id);
+          merged.push({
+            id: ftsRow.id,
+            concept: ftsRow.concept,
+          });
+        }
+      }
+
+      return { engrams: merged.slice(0, maxResults) };
     }
 
     return { engrams: engramIndex.listAll(user.userId, maxResults) };

@@ -41,6 +41,7 @@ export async function rebuildIndex(
             capturedAt: engram.captured_at,
             sourceType: engram.source_type,
             confidence: engram.confidence,
+            tags: engram.tags,
           });
           synced++;
         } catch (err) {
