@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { logger } from '../config/logger.js';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyStatic from '@fastify/static';
+import rateLimit from '@fastify/rate-limit';
 import type { AuthVerifier } from './auth.js';
 import { engramRoutes } from './routes/engrams.js';
 import { statsRoutes } from './routes/stats.js';
@@ -40,6 +41,14 @@ export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: logger.child({ component: 'fastify' }) });
 
   await app.register(fastifyWebsocket);
+
+  // Rate limiting: 100 requests per minute per IP for API routes
+  await app.register(rateLimit, {
+    max: 100,
+    timeWindow: '1 minute',
+    allowList: ['127.0.0.1', '::1'],
+    keyGenerator: (req) => req.ip,
+  });
 
   // Serve frontend static files
   await app.register(fastifyStatic, {

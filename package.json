@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@azure/identity": "^4.13.1",
+    "@fastify/rate-limit": "^10.3.0",
     "@fastify/static": "^9.0.0",
     "@fastify/websocket": "^11.2.0",
     "@microsoft/microsoft-graph-client": "^3.0.7",
