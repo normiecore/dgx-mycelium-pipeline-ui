@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { patchEngram } from '../api';
-import { useToast } from './Toast';
 
 const SOURCE_LABELS: Record<string, string> = {
   graph_email: 'Email',
@@ -29,7 +29,6 @@ interface EngramCardProps {
 export default function EngramCard({ engram, showActions = true, onAction, focused = false, onFocus }: EngramCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { addToast } = useToast();
 
   const confidence = engram.confidence ?? 0;
   const confidenceClass = confidence >= 0.7 ? 'high' : confidence >= 0.4 ? 'medium' : 'low';
@@ -48,11 +47,9 @@ export default function EngramCard({ engram, showActions = true, onAction, focus
     setLoading(true);
     try {
       await patchEngram(engram.id, status);
-      addToast('success', `Engram ${status}`, engram.concept || 'Engram updated successfully.');
       onAction?.();
     } catch (err) {
       console.error('Action failed:', err);
-      addToast('error', 'Action failed', 'Could not update the engram. Try again.');
     }
     setLoading(false);
   };
@@ -77,7 +74,11 @@ export default function EngramCard({ engram, showActions = true, onAction, focus
     <div className={`engram-card ${expanded ? 'expanded' : ''} ${focused ? 'focused' : ''}`} onClick={() => { onFocus?.(); setExpanded(!expanded); }}>
       <div className="engram-header">
         <div className="engram-info">
-          <h3 className="engram-title">{engram.concept || 'Untitled'}</h3>
+          <h3 className="engram-title">
+            <Link to={`/engram/${engram.id}`} className="engram-title-link" onClick={e => e.stopPropagation()}>
+              {engram.concept || 'Untitled'}
+            </Link>
+          </h3>
           <div className="engram-meta">
             <span className={`engram-source source-${engram.sourceType?.startsWith('desktop_') ? 'desktop' : 'cloud'}`}>{getSourceLabel(engram.sourceType, engram.source_app)}</span>
             <span className="engram-separator">&bull;</span>

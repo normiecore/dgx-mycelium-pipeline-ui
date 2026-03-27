@@ -68,7 +68,16 @@ export async function engramRoutes(
   app.get('/api/engrams/:id', async (req) => {
     const user = (req as any).user;
     const { id } = req.params as { id: string };
-    return await muninnClient.read(VM.personalVault(user.userId), id);
+    const result = await muninnClient.read(VM.personalVault(user.userId), id);
+
+    // Enrich with related engrams (by shared tags) and local index metadata
+    const related_engrams = engramIndex.findRelatedByTags(user.userId, id, 5);
+
+    return {
+      ...result,
+      related_engrams,
+      source_metadata: result.metadata ?? null,
+    };
   });
 
   app.patch('/api/engrams/:id', async (req, reply) => {

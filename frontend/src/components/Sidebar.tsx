@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/approved', label: 'Approved', icon: '\u2713' },
   { to: '/search', label: 'Search', icon: '\u2315' },
   { to: '/health', label: 'Health', icon: '\u2665' },
+  { to: '/users', label: 'Users', icon: '\u263A' },
   { to: '/dead-letters', label: 'Dead Letters', icon: '\u26A0' },
 ];
 

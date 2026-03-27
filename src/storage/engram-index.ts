@@ -138,6 +138,36 @@ export class EngramIndex {
     ).all(userId, limit) as EngramIndexRow[];
   }
 
+  /**
+   * Find engrams that share at least one tag with the given engram.
+   * Returns up to `limit` results for the same user, excluding the source engram.
+   */
+  findRelatedByTags(userId: string, engramId: string, limit = 5): EngramIndexRow[] {
+    // First get the tags for the source engram
+    const source = this.db.prepare(
+      `SELECT tags FROM engram_index WHERE id = ? AND user_id = ?`,
+    ).get(engramId, userId) as { tags: string } | undefined;
+
+    if (!source || !source.tags.trim()) return [];
+
+    const tagList = source.tags.trim().split(/\s+/);
+    if (tagList.length === 0) return [];
+
+    // Build a query that matches any of the tags
+    // Use LIKE for each tag to find overlapping engrams
+    const conditions = tagList.map(() => `e.tags LIKE ?`);
+    const params = tagList.map((t) => `%${t}%`);
+
+    return this.db.prepare(
+      `SELECT id, user_id AS userId, concept, approval_status AS approvalStatus,
+        captured_at AS capturedAt, source_type AS sourceType, confidence, tags
+      FROM engram_index e
+      WHERE e.user_id = ? AND e.id != ? AND (${conditions.join(' OR ')})
+      ORDER BY e.captured_at DESC
+      LIMIT ?`,
+    ).all(userId, engramId, ...params, limit) as EngramIndexRow[];
+  }
+
   updateStatus(id: string, status: string): void {
     this.db.prepare(
       `UPDATE engram_index SET approval_status = ?, updated_at = datetime('now') WHERE id = ?`,

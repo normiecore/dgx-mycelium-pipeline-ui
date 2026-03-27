@@ -62,6 +62,10 @@ export async function patchEngram(id: string, approvalStatus: string, department
   });
 }
 
+export async function getEngramDetail(id: string): Promise<any> {
+  return fetchAPI(`/api/engrams/${id}`);
+}
+
 export async function getStats(): Promise<any> {
   return fetchAPI('/api/stats');
 }
@@ -89,6 +93,33 @@ export async function getAnalyticsConfidence(): Promise<any> {
 export async function getHealth(): Promise<any> {
   const res = await fetch('/api/health');
   return res.json();
+}
+
+// User management
+export async function getUsers(page = 1, limit = 20, department?: string, q?: string): Promise<any> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (department) params.set('department', department);
+  if (q) params.set('q', q);
+  return fetchAPI(`/api/users?${params}`);
+}
+
+export async function getUser(id: string): Promise<any> {
+  return fetchAPI(`/api/users/${id}`);
+}
+
+export async function updateUser(id: string, data: { department?: string; role?: string; harvestingEnabled?: boolean }): Promise<any> {
+  return fetchAPI(`/api/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getDepartments(): Promise<any> {
+  return fetchAPI('/api/users/departments');
+}
+
+export async function syncUserStats(id: string): Promise<any> {
+  return fetchAPI(`/api/users/${id}/sync-stats`, { method: 'POST' });
 }
 
 export interface WebSocketHandle {

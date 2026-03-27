@@ -9,7 +9,9 @@ import Approved from './pages/Approved';
 import Search from './pages/Search';
 import Health from './pages/Health';
 import DeadLetters from './pages/DeadLetters';
+import Users from './pages/Users';
 import Dashboard from './pages/Dashboard';
+import EngramDetail from './pages/EngramDetail';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) return <Navigate to="/login" replace />;
@@ -75,6 +77,8 @@ export default function App() {
                   <Route path="/approved" element={<Approved />} />
                   <Route path="/search" element={<Search />} />
                   <Route path="/health" element={<Health />} />
+                  <Route path="/users" element={<Users />} />
+                  <Route path="/engram/:id" element={<EngramDetail />} />
                   <Route path="/dead-letters" element={<DeadLetters />} />
                 </Routes>
               </main>
