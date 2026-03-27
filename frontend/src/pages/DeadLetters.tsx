@@ -35,6 +35,17 @@ export default function DeadLetters() {
 
   useEffect(() => { load(); }, [load]);
 
+  const handleRetry = async (id: number) => {
+    try {
+      await retryDeadLetter(String(id));
+      setItems(prev => prev.filter(i => i.id !== id));
+      setCount(prev => prev - 1);
+      addToast('success', 'Dead letter requeued', 'The capture has been sent back to the pipeline for reprocessing.');
+    } catch {
+      addToast('error', 'Retry failed', 'Could not requeue the dead letter. Try again.');
+    }
+  };
+
   const handleDelete = async (id: number) => {
     try {
       await fetchWithAuth(`/api/dead-letters/${id}`, { method: 'DELETE' });
@@ -88,6 +99,7 @@ export default function DeadLetters() {
                   </div>
                 </div>
                 <div className="engram-actions" onClick={e => e.stopPropagation()}>
+                  <button className="btn-approve" onClick={() => handleRetry(item.id)}>Retry</button>
                   <button className="btn-dismiss" onClick={() => handleDelete(item.id)}>Dismiss</button>
                 </div>
               </div>
