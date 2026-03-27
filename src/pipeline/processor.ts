@@ -10,6 +10,7 @@ import type { RawCapture } from '../types.js';
 import { topicForUser, TOPICS } from '../queue/topics.js';
 import type { ConcurrencyLimiter } from './concurrency-limiter.js';
 import type { PipelineMetrics } from './metrics.js';
+import type { OcrClient } from './ocr.js';
 
 export interface ProcessResult {
   action: 'stored' | 'blocked' | 'deduplicated' | 'error';
@@ -25,6 +26,7 @@ export class PipelineProcessor {
     private engramIndex?: EngramIndex,
     private limiter?: ConcurrencyLimiter,
     private metrics?: PipelineMetrics,
+    private ocrClient?: OcrClient,
   ) {}
 
   async process(capture: RawCapture): Promise<ProcessResult> {
@@ -35,7 +37,10 @@ export class PipelineProcessor {
       return { action: 'blocked', reason: `pre-filter: ${filterResult.reason}` };
     }
 
-    // Stage 2: Dedup check (before LLM call to save compute)
+    // Stage 2: OCR enrichment for desktop screenshots (before LLM to replace base64 with text)
+    capture = await this.enrichWithOcr(capture);
+
+    // Stage 3: Dedup check (before LLM call to save compute)
     if (this.deduplicator.isDuplicate(capture.userId, capture.rawContent)) {
       this.metrics?.recordDeduplicated();
       return { action: 'deduplicated' };
@@ -99,5 +104,70 @@ export class PipelineProcessor {
     this.publishToNats(topicForUser(capture.userId), engram);
     this.metrics?.recordProcessed();
     return { action: 'stored' };
+  }
+
+  // ---------------------------------------------------------------------------
+  // OCR enrichment
+  // ---------------------------------------------------------------------------
+
+  /**
+   * For desktop captures that contain a base64 screenshot, run OCR to extract
+   * text and append it to the capture's rawContent. The base64 image data is
+   * then stripped so downstream stages (LLM extractor) receive only text.
+   *
+   * If OCR is unavailable or fails, the capture is returned unchanged --
+   * the pipeline degrades gracefully, falling back to the extractor's own
+   * `prepareContent` which already strips the screenshot.
+   */
+  private async enrichWithOcr(capture: RawCapture): Promise<RawCapture> {
+    if (!this.ocrClient) return capture;
+
+    // Only process desktop captures that carry screenshot data
+    const isDesktop =
+      capture.sourceType === 'desktop_screenshot' ||
+      capture.sourceType === 'desktop_window';
+    if (!isDesktop) return capture;
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(capture.rawContent);
+    } catch {
+      return capture;
+    }
+
+    const base64 = parsed.screenshotBase64;
+    if (typeof base64 !== 'string' || base64.length === 0) return capture;
+
+    const ocrResult = await this.ocrClient.extractText(base64);
+
+    if (!ocrResult || ocrResult.text.trim().length === 0) {
+      this.metrics?.recordOcrFailed();
+      logger.debug({ captureId: capture.id }, 'OCR returned no text, continuing without enrichment');
+      return capture;
+    }
+
+    this.metrics?.recordOcrProcessed(ocrResult.confidence);
+    logger.info(
+      {
+        captureId: capture.id,
+        ocrChars: ocrResult.text.length,
+        ocrRegions: ocrResult.regions.length,
+        ocrConfidence: ocrResult.confidence.toFixed(3),
+        ocrTimeMs: ocrResult.processingTimeMs,
+      },
+      'OCR enrichment complete',
+    );
+
+    // Replace base64 with extracted text and rebuild rawContent
+    const { screenshotBase64: _, ...contextWithoutScreenshot } = parsed;
+    const enriched = {
+      ...contextWithoutScreenshot,
+      screenshotText: `[Screenshot text]: ${ocrResult.text}`,
+    };
+
+    return {
+      ...capture,
+      rawContent: JSON.stringify(enriched),
+    };
   }
 }

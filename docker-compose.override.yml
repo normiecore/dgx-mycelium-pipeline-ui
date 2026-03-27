@@ -1,0 +1,39 @@
+# =============================================================================
+# Local Development Override -- no GPU required
+# =============================================================================
+# This file is auto-loaded by `docker compose up` when present.
+# It replaces vLLM with Ollama so you can develop on a machine without an
+# NVIDIA GPU.  Delete or rename this file on RunPod / production.
+#
+# Usage:
+#   docker compose up -d           -- uses this override automatically
+#   docker compose up -d --build   -- rebuild pipeline image after code changes
+# =============================================================================
+
+services:
+  # Swap vLLM for Ollama (CPU or Apple Silicon)
+  vllm:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    networks: [harvester]
+    ports:
+      - "8000:11434"
+    volumes:
+      - model-cache:/root/.ollama
+    deploy: {}
+    command: ["serve"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Override pipeline env to point at Ollama's port inside the container
+  pipeline:
+    environment:
+      - NATS_URL=nats://nats:4222
+      - LLM_BASE_URL=http://vllm:11434/v1
+      - LLM_MODEL=mistral:7b-instruct-v0.3-q4_K_M
+    volumes:
+      - ./data:/app/data

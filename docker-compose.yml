@@ -1,19 +1,45 @@
+# =============================================================================
+# Knowledge Harvester Pipeline -- Full Stack (GPU / RunPod)
+# =============================================================================
+# Usage:
+#   docker compose up -d              -- start core stack (pipeline + nats + vllm)
+#   docker compose --profile desktop up -d  -- include desktop agent
+#
+# Local dev (no GPU):
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+# =============================================================================
+
+networks:
+  harvester:
+    driver: bridge
+
 services:
+  # ---------------------------------------------------------------------------
+  # NATS -- message queue with JetStream persistence
+  # ---------------------------------------------------------------------------
   nats:
     image: nats:2.10-alpine
+    restart: unless-stopped
+    networks: [harvester]
     ports:
       - "4222:4222"
+      - "8222:8222"
     volumes:
       - nats-data:/data
-    command: ["--jetstream", "--store_dir=/data"]
+    command: ["--jetstream", "--store_dir=/data", "--http_port=8222"]
     healthcheck:
-      test: ["CMD", "nats-server", "--health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
       interval: 10s
       timeout: 5s
       retries: 3
 
+  # ---------------------------------------------------------------------------
+  # vLLM -- OpenAI-compatible LLM server (GPU required)
+  # ---------------------------------------------------------------------------
   vllm:
     image: vllm/vllm-openai:latest
+    restart: unless-stopped
+    networks: [harvester]
     ports:
       - "8000:8000"
     volumes:
@@ -26,33 +52,27 @@ services:
               count: 1
               capabilities: [gpu]
     command:
-      - --model=hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4
-      - --quantization=awq
-      - --max-model-len=4096
+      - --model=${LLM_MODEL:-mistralai/Mistral-7B-Instruct-v0.3}
+      - --max-model-len=${LLM_MAX_MODEL_LEN:-8192}
       - --gpu-memory-utilization=0.85
+      - --host=0.0.0.0
+      - --port=8000
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s
+      start_period: 180s
 
-  muninndb:
-    image: muninndb:latest
-    ports:
-      - "3030:3030"
-    volumes:
-      - muninndb-data:/data
-    environment:
-      - MUNINNDB_API_KEY=${MUNINNDB_API_KEY}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3030/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
+  # ---------------------------------------------------------------------------
+  # Pipeline -- the main Fastify backend + React frontend
+  # ---------------------------------------------------------------------------
   pipeline:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks: [harvester]
     ports:
       - "3001:3001"
     depends_on:
@@ -60,21 +80,36 @@ services:
         condition: service_healthy
       vllm:
         condition: service_healthy
-      muninndb:
-        condition: service_healthy
     env_file: .env
     environment:
       - NATS_URL=nats://nats:4222
-      - MUNINNDB_URL=http://muninndb:3030
       - LLM_BASE_URL=http://vllm:8000/v1
-      - LLM_MODEL=hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4
+      - LLM_MODEL=${LLM_MODEL:-mistralai/Mistral-7B-Instruct-v0.3}
+    volumes:
+      - ./data:/app/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
       retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Desktop Agent (optional -- enable with --profile desktop)
+  # ---------------------------------------------------------------------------
+  desktop-agent:
+    profiles: ["desktop"]
+    build:
+      context: ../knowledge-harvester-desktop
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks: [harvester]
+    depends_on:
+      pipeline:
+        condition: service_healthy
+    environment:
+      - PIPELINE_URL=http://pipeline:3001
 
 volumes:
   nats-data:
   model-cache:
-  muninndb-data:

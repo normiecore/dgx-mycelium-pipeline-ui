@@ -11,6 +11,7 @@ import { Deduplicator } from './pipeline/deduplicator.js';
 import { PipelineProcessor } from './pipeline/processor.js';
 import { PipelineMetrics } from './pipeline/metrics.js';
 import { ConcurrencyLimiter } from './pipeline/concurrency-limiter.js';
+import { OcrClient } from './pipeline/ocr.js';
 import { MuninnDBClient } from './storage/muninndb-client.js';
 import { VaultManager } from './storage/vault-manager.js';
 import { EngramIndex } from './storage/engram-index.js';
@@ -109,6 +110,23 @@ async function main(): Promise<void> {
   const metrics = new PipelineMetrics('metrics.db');
   const limiter = new ConcurrencyLimiter(config.maxConcurrentExtractions);
 
+  // OCR client (optional -- pipeline degrades gracefully if unavailable)
+  let ocrClient: OcrClient | undefined;
+  if (config.ocr.enabled) {
+    ocrClient = new OcrClient(config.ocr.baseUrl, config.ocr.timeoutMs);
+    const ocrUp = await ocrClient.isAvailable();
+    if (ocrUp) {
+      logger.info({ url: config.ocr.baseUrl }, 'PaddleOCR service is available');
+    } else {
+      logger.warn(
+        { url: config.ocr.baseUrl },
+        'PaddleOCR service is not reachable at startup (will retry per-request)',
+      );
+    }
+  } else {
+    logger.info('OCR disabled (set OCR_ENABLED=true to enable)');
+  }
+
   // Pipeline processor
   const processor = new PipelineProcessor(
     extractor,
@@ -118,6 +136,7 @@ async function main(): Promise<void> {
     engramIndex,
     limiter,
     metrics,
+    ocrClient,
   );
 
   // Subscribe to raw captures on NATS
