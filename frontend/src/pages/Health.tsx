@@ -4,15 +4,41 @@ import StatusBadge from '../components/StatusBadge';
 
 export default function Health() {
   const [health, setHealth] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    const load = () => getHealth().then(setHealth).catch(() => setHealth(null));
+    const load = () => getHealth()
+      .then((data) => { setHealth(data); setError(false); })
+      .catch(() => { setHealth(null); setError(true); })
+      .finally(() => setLoading(false));
     load();
     const interval = setInterval(load, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  if (!health) return <div className="page-loading">Loading health data...</div>;
+  if (loading) {
+    return (
+      <div className="page">
+        <h2>Pipeline Health</h2>
+        <div className="page-loading">
+          <div className="spinner" />
+          <p>Loading health data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !health) {
+    return (
+      <div className="page">
+        <h2>Pipeline Health</h2>
+        <div className="error-state">
+          <p>Unable to reach the pipeline. It may be offline or unreachable.</p>
+        </div>
+      </div>
+    );
+  }
 
   const metrics = health.metrics || {};
   const checks = health.checks || {};

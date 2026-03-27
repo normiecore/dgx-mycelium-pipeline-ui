@@ -5,13 +5,16 @@ import EngramCard from '../components/EngramCard';
 export default function Queue() {
   const [engrams, setEngrams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadEngrams = useCallback(async () => {
     try {
+      setError(null);
       const data = await getEngrams('pending');
       setEngrams(data.engrams || []);
     } catch (err) {
       console.error('Failed to load engrams:', err);
+      setError('Failed to load engrams. Check your connection and try again.');
     }
     setLoading(false);
   }, []);
@@ -29,7 +32,29 @@ export default function Queue() {
     return () => ws.close();
   }, [loadEngrams]);
 
-  if (loading) return <div className="page-loading">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="page">
+        <h2>Review Queue</h2>
+        <div className="page-loading">
+          <div className="spinner" />
+          <p>Loading engrams...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page">
+        <h2>Review Queue</h2>
+        <div className="error-state">
+          <p>{error}</p>
+          <button className="btn-retry" onClick={loadEngrams}>Retry</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -37,7 +62,7 @@ export default function Queue() {
       <p className="page-subtitle">{engrams.length} engram{engrams.length !== 1 ? 's' : ''} pending review</p>
       {engrams.length === 0 ? (
         <div className="empty-state">
-          <p>No pending engrams. The pipeline will surface new knowledge as it arrives.</p>
+          <p>No pending engrams. New knowledge will appear here as it's captured.</p>
         </div>
       ) : (
         <div className="engram-list">

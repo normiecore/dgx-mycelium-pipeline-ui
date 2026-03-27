@@ -45,8 +45,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .page { max-width: 800px; }
 .page h2 { font-size: 20px; margin-bottom: 4px; }
 .page-subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
-.page-loading { color: var(--text-secondary); padding: 40px; text-align: center; }
+.page-loading { color: var(--text-secondary); padding: 40px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .empty-state { padding: 40px; text-align: center; color: var(--text-secondary); background: var(--bg-card); border-radius: 8px; }
+.error-state { padding: 40px; text-align: center; color: var(--danger); background: rgba(255,74,74,0.08); border: 1px solid rgba(255,74,74,0.2); border-radius: 8px; }
+.error-state p { margin-bottom: 12px; }
+.btn-retry { background: rgba(255,74,74,0.15); color: var(--danger); border: 1px solid rgba(255,74,74,0.3); border-radius: 6px; padding: 8px 20px; font-size: 13px; cursor: pointer; font-weight: 500; }
+.btn-retry:hover { background: rgba(255,74,74,0.25); }
+
+/* Spinner */
+.spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Error boundary */
+.error-boundary { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg-primary); }
+.error-boundary-content { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 40px; max-width: 480px; text-align: center; }
+.error-boundary-content h2 { font-size: 20px; margin-bottom: 8px; }
+.error-boundary-content p { color: var(--text-secondary); font-size: 14px; margin-bottom: 16px; }
+.error-boundary-detail { font-family: 'Fira Code', 'Consolas', monospace; font-size: 11px; background: rgba(0,0,0,0.3); color: var(--danger); padding: 10px; border-radius: 4px; margin-bottom: 16px; text-align: left; overflow-x: auto; white-space: pre-wrap; }
+.btn-error-retry { background: var(--accent); color: white; border: none; border-radius: 6px; padding: 10px 24px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-error-retry:hover { opacity: 0.9; }
 
 /* Engram cards */
 .engram-list { display: flex; flex-direction: column; gap: 8px; }
