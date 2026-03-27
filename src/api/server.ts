@@ -10,6 +10,7 @@ import { engramRoutes } from './routes/engrams.js';
 import { captureRoutes } from './routes/captures.js';
 import { deadLetterRoutes } from './routes/dead-letters.js';
 import { statsRoutes } from './routes/stats.js';
+import { analyticsRoutes } from './routes/analytics.js';
 import type { MuninnDBClient } from '../storage/muninndb-client.js';
 import type { VaultManager } from '../storage/vault-manager.js';
 import type { EngramIndex } from '../storage/engram-index.js';
@@ -128,6 +129,11 @@ export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
 
   await app.register(statsRoutes, {
     muninnClient: deps.muninnClient,
+  });
+
+  await app.register(analyticsRoutes, {
+    engramIndex: deps.engramIndex,
+    metrics: deps.metrics,
   });
 
   // WebSocket endpoint

@@ -66,6 +66,26 @@ export async function getStats(): Promise<any> {
   return fetchAPI('/api/stats');
 }
 
+export async function getAnalyticsOverview(): Promise<any> {
+  return fetchAPI('/api/analytics/overview');
+}
+
+export async function getAnalyticsVolume(period: string = 'day'): Promise<any> {
+  return fetchAPI(`/api/analytics/volume?period=${period}`);
+}
+
+export async function getAnalyticsSources(): Promise<any> {
+  return fetchAPI('/api/analytics/sources');
+}
+
+export async function getAnalyticsTopTags(limit: number = 20): Promise<any> {
+  return fetchAPI(`/api/analytics/top-tags?limit=${limit}`);
+}
+
+export async function getAnalyticsConfidence(): Promise<any> {
+  return fetchAPI('/api/analytics/confidence');
+}
+
 export async function getHealth(): Promise<any> {
   const res = await fetch('/api/health');
   return res.json();

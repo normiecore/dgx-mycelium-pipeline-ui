@@ -8,6 +8,7 @@ import Approved from './pages/Approved';
 import Search from './pages/Search';
 import Health from './pages/Health';
 import DeadLetters from './pages/DeadLetters';
+import Dashboard from './pages/Dashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) return <Navigate to="/login" replace />;
@@ -67,7 +68,7 @@ export default function App() {
               <Sidebar />
               <main className="main-content">
                 <Routes>
-                  <Route path="/" element={<Navigate to="/queue" replace />} />
+                  <Route path="/" element={<Dashboard />} />
                   <Route path="/queue" element={<Queue />} />
                   <Route path="/approved" element={<Approved />} />
                   <Route path="/search" element={<Search />} />

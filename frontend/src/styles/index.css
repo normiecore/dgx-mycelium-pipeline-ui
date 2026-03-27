@@ -155,3 +155,57 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .info-label { color: var(--text-secondary); margin-right: 8px; }
 .text-ok { color: var(--success); }
 .text-error { color: var(--danger); }
+
+/* Dashboard */
+.dash-page { max-width: 960px; }
+
+.dash-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.dash-stat-card { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border-radius: 8px; padding: 16px; }
+.dash-stat-icon { font-size: 24px; flex-shrink: 0; }
+.dash-stat-body { display: flex; flex-direction: column; }
+.dash-stat-value { font-size: 24px; font-weight: 700; color: var(--accent); line-height: 1.2; }
+.dash-stat-label { font-size: 12px; color: var(--text-secondary); }
+
+.dash-pipeline-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.dash-pipeline-chip { background: var(--bg-card); padding: 6px 12px; border-radius: 6px; font-size: 12px; color: var(--text-secondary); }
+.dash-pipeline-chip strong { color: var(--text-primary); margin-left: 4px; }
+
+.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 768px) { .dash-grid { grid-template-columns: 1fr; } }
+
+.dash-card { background: var(--bg-card); border-radius: 8px; padding: 16px; }
+.dash-card-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary); }
+
+/* Volume bar chart */
+.dash-bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 140px; padding-bottom: 20px; position: relative; }
+.dash-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; position: relative; }
+.dash-bar-stack { flex: 1; width: 100%; display: flex; flex-direction: column-reverse; align-items: stretch; }
+.dash-bar { min-height: 0; border-radius: 2px; transition: height 0.3s; }
+.dash-bar-approved { background: var(--success); opacity: 0.8; }
+.dash-bar-pending { background: var(--accent); opacity: 0.8; }
+.dash-bar-dismissed { background: var(--danger); opacity: 0.8; }
+.dash-bar-label { font-size: 9px; color: var(--text-secondary); margin-top: 4px; white-space: nowrap; position: absolute; bottom: -18px; }
+
+.dash-legend { display: flex; gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.dash-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-secondary); }
+.dash-legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* Horizontal bars (sources) */
+.dash-h-bars { display: flex; flex-direction: column; gap: 8px; }
+.dash-h-bar-row { display: flex; align-items: center; gap: 8px; }
+.dash-h-bar-label { width: 72px; font-size: 12px; color: var(--text-secondary); text-align: right; flex-shrink: 0; text-transform: capitalize; }
+.dash-h-bar-track { flex: 1; height: 20px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; }
+.dash-h-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.3s; min-width: 2px; }
+.dash-h-bar-value { font-size: 11px; color: var(--text-secondary); flex-shrink: 0; width: 80px; }
+
+/* Tag cloud */
+.dash-tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.dash-tag-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--tag-bg); color: var(--tag-text); padding: 3px 10px; border-radius: 4px; line-height: 1.4; }
+.dash-tag-count { font-size: 0.75em; opacity: 0.6; }
+
+/* Confidence histogram */
+.dash-histogram { display: flex; align-items: flex-end; gap: 8px; height: 120px; padding-bottom: 24px; position: relative; }
+.dash-hist-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; position: relative; }
+.dash-hist-count { font-size: 10px; color: var(--text-secondary); margin-bottom: 4px; }
+.dash-hist-bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; transition: height 0.3s; min-height: 2px; }
+.dash-hist-label { font-size: 10px; color: var(--text-secondary); margin-top: 4px; position: absolute; bottom: -20px; white-space: nowrap; }
