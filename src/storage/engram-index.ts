@@ -95,6 +95,9 @@ export class EngramIndex {
    * Returns results ranked by BM25 relevance, filtered to the given user.
    */
   search(userId: string, query: string, limit = 20): FtsSearchResult[] {
+    // Escape FTS5 special chars by wrapping in double quotes (literal phrase match)
+    const escaped = '"' + query.replace(/"/g, '""') + '"';
+    try {
     return this.db.prepare(
       `SELECT
         e.id, e.user_id AS userId, e.concept,
@@ -108,7 +111,11 @@ export class EngramIndex {
       WHERE engram_fts MATCH ? AND e.user_id = ?
       ORDER BY rank
       LIMIT ?`,
-    ).all(query, userId, limit) as FtsSearchResult[];
+    ).all(escaped, userId, limit) as FtsSearchResult[];
+    } catch {
+      // Invalid FTS5 query syntax — return empty rather than 500
+      return [];
+    }
   }
 
   listByStatus(userId: string, status: string, limit = 20): EngramIndexRow[] {

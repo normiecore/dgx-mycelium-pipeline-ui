@@ -27,7 +27,11 @@ export class WebSocketManager {
     const message = JSON.stringify(data);
     for (const ws of userConns) {
       if (ws.readyState === 1) {
-        ws.send(message);
+        try {
+          ws.send(message);
+        } catch {
+          userConns.delete(ws);
+        }
       }
     }
   }

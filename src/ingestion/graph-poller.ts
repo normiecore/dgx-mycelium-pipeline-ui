@@ -136,7 +136,7 @@ export class GraphPoller {
           userEmail,
           sourceType: 'graph_calendar',
           sourceApp: 'outlook_calendar',
-          capturedAt: event.start.dateTime,
+          capturedAt: event.start?.dateTime ?? new Date().toISOString(),
           rawContent: JSON.stringify({
             subject: event.subject,
             bodyPreview: event.bodyPreview,

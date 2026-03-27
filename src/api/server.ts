@@ -101,6 +101,7 @@ export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
       (req as any).user = await deps.authVerifier(authHeader);
     } catch (err: any) {
       reply.code(401).send({ error: err.message });
+      return;
     }
   });
 

@@ -241,6 +241,11 @@ async function main(): Promise<void> {
     } catch (err) {
       logger.error({ err }, 'Failed to purge dismissed engrams');
     }
+    try {
+      deduplicator.expireOlderThan(90);
+    } catch (err) {
+      logger.error({ err }, 'Failed to expire dedup hashes');
+    }
   };
 
   runPurge();
@@ -285,6 +290,7 @@ async function main(): Promise<void> {
     deduplicator.close();
     engramIndex.close();
     deadLetterStore.close();
+    metrics.close();
     logger.info('Shutdown complete');
     process.exit(0);
   };
