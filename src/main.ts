@@ -188,6 +188,12 @@ async function main(): Promise<void> {
           }
 
           try {
+            await graphPoller.pollTodoTasks(user.id, email);
+          } catch (err) {
+            logger.error({ userId: user.id, err }, 'Failed to poll todo tasks');
+          }
+
+          try {
             await graphPoller.pollOneDrive(user.id, email);
           } catch (err) {
             logger.error({ userId: user.id, err }, 'Failed to poll onedrive');

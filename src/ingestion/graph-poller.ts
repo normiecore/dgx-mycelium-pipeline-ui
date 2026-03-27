@@ -8,6 +8,8 @@ import type {
   GraphChatMessage,
   GraphCalendarEvent,
   GraphDriveItem,
+  GraphTodoTask,
+  GraphTodoTaskList,
 } from './graph-types.js';
 import { retryWithBackoff, RetryableError } from './graph-retry.js';
 
@@ -157,6 +159,49 @@ export class GraphPoller {
     if (deltaLink) {
       this.deltaStore.setDeltaLink(userId, 'calendar', deltaLink);
     }
+  }
+
+  async pollTodoTasks(userId: string, userEmail: string): Promise<void> {
+    // To-Do API doesn't support delta queries, so we use the delta store
+    // to track the last poll timestamp and only emit tasks modified since then.
+    const lastPoll = this.deltaStore.getDeltaLink(userId, 'todo') ?? '';
+    const since = lastPoll || '1970-01-01T00:00:00Z';
+
+    // Fetch all task lists
+    const listsResponse = await this.fetchWithRetry<{ value: GraphTodoTaskList[] }>(
+      `/users/${userId}/todo/lists`,
+    );
+
+    for (const list of listsResponse.value) {
+      // Fetch tasks modified since last poll
+      const tasksUrl = `/users/${userId}/todo/lists/${list.id}/tasks?$filter=lastModifiedDateTime gt ${since}&$orderby=lastModifiedDateTime desc&$top=50`;
+      const tasksResponse = await this.fetchWithRetry<{ value: GraphTodoTask[] }>(tasksUrl);
+
+      for (const task of tasksResponse.value) {
+        const capture: RawCapture = {
+          id: randomUUID(),
+          userId,
+          userEmail,
+          sourceType: 'graph_task',
+          sourceApp: 'todo',
+          capturedAt: task.lastModifiedDateTime,
+          rawContent: JSON.stringify({
+            title: task.title,
+            body: task.body?.content,
+            status: task.status,
+            importance: task.importance,
+            listName: list.displayName,
+            dueDateTime: task.dueDateTime?.dateTime,
+            completedDateTime: task.completedDateTime?.dateTime,
+          }),
+          metadata: { taskId: task.id, listId: list.id },
+        };
+        this.publish(capture);
+      }
+    }
+
+    // Store current timestamp as the delta marker
+    this.deltaStore.setDeltaLink(userId, 'todo', new Date().toISOString());
   }
 
   async pollOneDrive(userId: string, userEmail: string): Promise<void> {

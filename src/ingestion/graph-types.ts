@@ -50,6 +50,23 @@ export interface GraphCalendarEvent {
   isAllDay?: boolean;
 }
 
+export interface GraphTodoTask {
+  id: string;
+  title: string;
+  body?: { content: string; contentType: string };
+  status: string;
+  importance: string;
+  createdDateTime: string;
+  lastModifiedDateTime: string;
+  dueDateTime?: { dateTime: string; timeZone: string };
+  completedDateTime?: { dateTime: string; timeZone: string };
+}
+
+export interface GraphTodoTaskList {
+  id: string;
+  displayName: string;
+}
+
 export interface GraphDriveItem {
   id: string;
   name: string;
