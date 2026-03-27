@@ -39,6 +39,13 @@ export class DeadLetterStore {
     ).all(limit) as DeadLetterRecord[];
   }
 
+  get(id: number): DeadLetterRecord | undefined {
+    return this.db.prepare(
+      `SELECT id, capture_id AS captureId, error, attempts, payload, created_at AS createdAt
+       FROM dead_letters WHERE id = ?`,
+    ).get(id) as DeadLetterRecord | undefined;
+  }
+
   count(): number {
     const row = this.db.prepare('SELECT COUNT(*) AS cnt FROM dead_letters').get() as { cnt: number };
     return row.cnt;

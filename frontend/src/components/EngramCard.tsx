@@ -71,7 +71,7 @@ export default function EngramCard({ engram, showActions = true, onAction, focus
   } catch {}
 
   return (
-    <div className={`engram-card ${expanded ? 'expanded' : ''} ${focused ? 'focused' : ''}`} onClick={() => { onFocus?.(); setExpanded(!expanded); }}>
+    <div role="article" aria-expanded={expanded} className={`engram-card ${expanded ? 'expanded' : ''} ${focused ? 'focused' : ''}`} onClick={() => { onFocus?.(); setExpanded(!expanded); }}>
       <div className="engram-header">
         <div className="engram-info">
           <h3 className="engram-title">
@@ -89,8 +89,8 @@ export default function EngramCard({ engram, showActions = true, onAction, focus
         </div>
         {showActions && !expanded && (
           <div className="engram-actions" onClick={e => e.stopPropagation()}>
-            <button className="btn-approve" disabled={loading} onClick={() => handleAction('approved')}>Approve</button>
-            <button className="btn-dismiss" disabled={loading} onClick={() => handleAction('dismissed')}>Dismiss</button>
+            <button className="btn-approve" disabled={loading} onClick={() => handleAction('approved')} aria-label={`Approve ${engram.concept || 'engram'}`}>Approve</button>
+            <button className="btn-dismiss" disabled={loading} onClick={() => handleAction('dismissed')} aria-label={`Dismiss ${engram.concept || 'engram'}`}>Dismiss</button>
           </div>
         )}
       </div>
@@ -131,8 +131,8 @@ export default function EngramCard({ engram, showActions = true, onAction, focus
 
           {showActions && (
             <div className="engram-actions expanded-actions" onClick={e => e.stopPropagation()}>
-              <button className="btn-approve" disabled={loading} onClick={() => handleAction('approved')}>Approve</button>
-              <button className="btn-dismiss" disabled={loading} onClick={() => handleAction('dismissed')}>Dismiss</button>
+              <button className="btn-approve" disabled={loading} onClick={() => handleAction('approved')} aria-label={`Approve ${engram.concept || 'engram'}`}>Approve</button>
+              <button className="btn-dismiss" disabled={loading} onClick={() => handleAction('dismissed')} aria-label={`Dismiss ${engram.concept || 'engram'}`}>Dismiss</button>
             </div>
           )}
         </div>

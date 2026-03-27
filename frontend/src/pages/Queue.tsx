@@ -156,7 +156,7 @@ export default function Queue() {
 
   return (
     <div className="page">
-      <h2>Review Queue ({engrams.length})</h2>
+      <h2>Review Queue (<span role="status">{engrams.length}</span>)</h2>
       <p className="page-subtitle">{engrams.length} engram{engrams.length !== 1 ? 's' : ''} pending review</p>
 
       {engrams.length > 0 && (
@@ -196,7 +196,7 @@ export default function Queue() {
           <p>No pending engrams. New knowledge will appear here as it's captured.</p>
         </div>
       ) : (
-        <div className="engram-list" ref={listRef}>
+        <div className="engram-list" ref={listRef} aria-live="polite" aria-keyshortcuts="j k a d">
           {engrams.map((e, i) => (
             <EngramCard
               key={e.id}

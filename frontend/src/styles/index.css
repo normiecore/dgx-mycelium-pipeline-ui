@@ -616,3 +616,156 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   .users-drawer { width: 100vw; max-width: 100vw; }
   .users-drawer-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 }
+
+/* Accessibility */
+.skip-link { position: absolute; top: -40px; left: 0; background: var(--accent); color: #fff; padding: 8px 16px; z-index: 100; transition: top 0.2s; }
+.skip-link:focus { top: 0; }
+*:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Export dropdown */
+.export-wrapper { position: relative; display: inline-block; }
+.export-btn { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.export-btn:hover { background: var(--bg-card-hover); }
+.export-dropdown { position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; z-index: 10; min-width: 140px; }
+.export-dropdown button { display: block; width: 100%; padding: 8px 14px; background: none; border: none; color: var(--text-primary); font-size: 13px; text-align: left; cursor: pointer; }
+.export-dropdown button:hover { background: var(--bg-card-hover); }
+
+/* ========== Search Facets ========== */
+.search-page { max-width: 900px; }
+
+.search-facets { margin-bottom: 16px; }
+
+.facets-toggle {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: all 0.15s;
+}
+.facets-toggle:hover { color: var(--text-primary); border-color: var(--accent); }
+
+.facets-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.facet-group { display: flex; flex-direction: column; gap: 6px; }
+
+.facet-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.facet-checkboxes { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+
+.facet-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.facet-checkbox input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+.facet-checkbox-text { text-transform: capitalize; }
+
+.facet-row { display: flex; align-items: center; gap: 6px; }
+
+.facet-separator { font-size: 12px; color: var(--text-secondary); }
+
+.facet-input {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  min-width: 0;
+  flex: 1;
+}
+.facet-input:focus { outline: none; border-color: var(--accent); }
+.facet-input-sm { max-width: 80px; }
+
+.facet-select {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  width: 100%;
+  cursor: pointer;
+}
+.facet-select:focus { outline: none; border-color: var(--accent); }
+
+.btn-clear-filters {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 11px;
+  color: var(--danger);
+  cursor: pointer;
+  align-self: flex-end;
+  transition: all 0.15s;
+}
+.btn-clear-filters:hover { border-color: var(--danger); }
+
+/* Search results header */
+.search-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.search-results-count { font-size: 13px; color: var(--text-secondary); }
+
+/* Search pagination */
+.search-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 0;
+}
+.search-pagination button {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.search-pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.search-pagination button:not(:disabled):hover { border-color: var(--accent); }
+.search-pagination span { font-size: 13px; color: var(--text-secondary); }
+
+/* Facets responsive */
+@media (max-width: 768px) {
+  .facets-panel { grid-template-columns: 1fr; gap: 12px; }
+  .facet-input-sm { max-width: 60px; }
+}
+
+/* Light theme overrides for facets */
+[data-theme="light"] .facets-panel { background: var(--bg-card); }
+[data-theme="light"] .facet-input,
+[data-theme="light"] .facet-select { background: var(--bg-secondary); }

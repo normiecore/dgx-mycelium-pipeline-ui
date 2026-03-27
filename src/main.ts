@@ -287,6 +287,7 @@ async function main(): Promise<void> {
     logger.info('Shutting down...');
     clearInterval(pollInterval);
     clearInterval(purgeInterval);
+    wsManager.close();
     await server.close();
     await nats.disconnect();
     deltaStore.close();

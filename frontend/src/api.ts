@@ -48,10 +48,40 @@ async function fetchAPI(path: string, opts?: RequestInit): Promise<any> {
   return res.json();
 }
 
-export async function getEngrams(status?: string, q?: string): Promise<any> {
+export interface EngramFilters {
+  status?: string;
+  q?: string;
+  source?: string;
+  from?: string;
+  to?: string;
+  confidence_min?: number;
+  confidence_max?: number;
+  department?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function getEngrams(statusOrFilters?: string | EngramFilters, q?: string): Promise<any> {
   const params = new URLSearchParams();
-  if (status) params.set('status', status);
-  if (q) params.set('q', q);
+
+  if (typeof statusOrFilters === 'string') {
+    // Legacy two-arg signature: getEngrams(status?, q?)
+    if (statusOrFilters) params.set('status', statusOrFilters);
+    if (q) params.set('q', q);
+  } else if (statusOrFilters) {
+    const f = statusOrFilters;
+    if (f.status) params.set('status', f.status);
+    if (f.q) params.set('q', f.q);
+    if (f.source) params.set('source', f.source);
+    if (f.from) params.set('from', f.from);
+    if (f.to) params.set('to', f.to);
+    if (f.confidence_min !== undefined) params.set('confidence_min', String(f.confidence_min));
+    if (f.confidence_max !== undefined) params.set('confidence_max', String(f.confidence_max));
+    if (f.department) params.set('department', f.department);
+    if (f.limit !== undefined) params.set('limit', String(f.limit));
+    if (f.offset !== undefined) params.set('offset', String(f.offset));
+  }
+
   return fetchAPI(`/api/engrams?${params}`);
 }
 
@@ -124,13 +154,29 @@ export async function syncUserStats(id: string): Promise<any> {
   return fetchAPI(`/api/users/${id}/sync-stats`, { method: 'POST' });
 }
 
+export async function retryDeadLetter(id: string): Promise<any> {
+  return fetchAPI(`/api/dead-letters/${id}/retry`, { method: 'POST' });
+}
+
 export interface WebSocketHandle {
   close(): void;
 }
 
+/**
+ * Connect to the engrams WebSocket with automatic reconnection.
+ *
+ * Reconnection uses exponential backoff: 1s, 2s, 4s, 8s, ... up to 30s max.
+ * The backoff resets once a connection is successfully opened.
+ *
+ * Note on ping/pong: The server sends WebSocket ping frames every 30s.
+ * Browsers handle pong responses automatically at the protocol level --
+ * no application-level code is needed on the client side.
+ */
 export function connectWebSocket(onMessage: (data: any) => void): WebSocketHandle {
   let currentWs: WebSocket | null = null;
   let closed = false;
+  let backoffMs = 1000;
+  const MAX_BACKOFF_MS = 30_000;
 
   function connect() {
     if (closed) return;
@@ -146,6 +192,11 @@ export function connectWebSocket(onMessage: (data: any) => void): WebSocketHandl
     const ws = new WebSocket(wsUrl);
     currentWs = ws;
 
+    ws.onopen = () => {
+      // Reset backoff on successful connection
+      backoffMs = 1000;
+    };
+
     ws.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
@@ -160,7 +211,9 @@ export function connectWebSocket(onMessage: (data: any) => void): WebSocketHandl
         window.location.href = '/login';
         return;
       }
-      setTimeout(connect, 3000);
+      // Exponential backoff reconnection
+      setTimeout(connect, backoffMs);
+      backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
     };
   }
 

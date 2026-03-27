@@ -117,21 +117,21 @@ export default function Dashboard() {
 
       {/* Stats cards */}
       <div className="dash-stats">
-        <div className="dash-stat-card">
+        <div className="dash-stat-card" aria-label={`Total Engrams: ${overview.totalEngrams}`}>
           <span className="dash-stat-icon">&#x1F4E6;</span>
           <div className="dash-stat-body">
             <span className="dash-stat-value">{overview.totalEngrams}</span>
             <span className="dash-stat-label">Total Engrams</span>
           </div>
         </div>
-        <div className="dash-stat-card">
+        <div className="dash-stat-card" aria-label={`Today's Captures: ${overview.captures.today}`}>
           <span className="dash-stat-icon">&#x1F4C5;</span>
           <div className="dash-stat-body">
             <span className="dash-stat-value">{overview.captures.today}</span>
             <span className="dash-stat-label">Today's Captures</span>
           </div>
         </div>
-        <div className="dash-stat-card">
+        <div className="dash-stat-card" aria-label={`Average Confidence: ${(overview.avgConfidence * 100).toFixed(1)}%`}>
           <span className="dash-stat-icon">&#x1F3AF;</span>
           <div className="dash-stat-body">
             <span className="dash-stat-value">
@@ -140,7 +140,7 @@ export default function Dashboard() {
             <span className="dash-stat-label">Avg Confidence</span>
           </div>
         </div>
-        <div className="dash-stat-card">
+        <div className="dash-stat-card" aria-label={`Error Rate: ${errorRate}%`}>
           <span className="dash-stat-icon">&#x26A0;</span>
           <div className="dash-stat-body">
             <span className="dash-stat-value">{errorRate}%</span>
@@ -172,7 +172,7 @@ export default function Dashboard() {
           {volume.length === 0 ? (
             <div className="empty-state">No capture data yet</div>
           ) : (
-            <div className="dash-bar-chart">
+            <div className="dash-bar-chart" role="img" aria-label={`Bar chart showing capture volume over 14 days. Total entries: ${volume.length}`}>
               {volume.map((v) => (
                 <div className="dash-bar-col" key={v.date}>
                   <div className="dash-bar-stack" title={`${v.count} captures`}>
@@ -215,7 +215,7 @@ export default function Dashboard() {
           {sources.length === 0 ? (
             <div className="empty-state">No source data yet</div>
           ) : (
-            <div className="dash-h-bars">
+            <div className="dash-h-bars" role="img" aria-label={`Horizontal bar chart showing engram sources: ${sources.map(s => `${s.source} ${s.count}`).join(', ')}`}>
               {sources.map((s) => (
                 <div className="dash-h-bar-row" key={s.source}>
                   <span className="dash-h-bar-label">{s.source}</span>
@@ -240,7 +240,7 @@ export default function Dashboard() {
           {tags.length === 0 ? (
             <div className="empty-state">No tags yet</div>
           ) : (
-            <div className="dash-tag-cloud">
+            <div className="dash-tag-cloud" role="img" aria-label={`Tag cloud showing top ${tags.length} tags`}>
               {tags.map((t) => {
                 const scale = 0.7 + (t.count / tagMax) * 0.6;
                 return (
@@ -265,7 +265,7 @@ export default function Dashboard() {
           {confidence.every((c) => c.count === 0) ? (
             <div className="empty-state">No confidence data yet</div>
           ) : (
-            <div className="dash-histogram">
+            <div className="dash-histogram" role="img" aria-label={`Histogram showing confidence distribution across ${confidence.length} ranges`}>
               {confidence.map((c) => (
                 <div className="dash-hist-col" key={c.range}>
                   <span className="dash-hist-count">{c.count}</span>

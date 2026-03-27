@@ -22,15 +22,49 @@ export async function engramRoutes(
 
   app.get('/api/engrams', async (req) => {
     const user = (req as any).user;
-    const { status, q, limit } = req.query as {
+    const {
+      status, q, limit, offset,
+      source, from, to,
+      confidence_min, confidence_max,
+      department,
+    } = req.query as {
       status?: string;
       q?: string;
       limit?: string;
+      offset?: string;
+      source?: string;
+      from?: string;
+      to?: string;
+      confidence_min?: string;
+      confidence_max?: string;
+      department?: string;
     };
     const maxResults = parseInt(limit || '20', 10);
+    const offsetNum = parseInt(offset || '0', 10);
+
+    // Check if any facet filters are active (beyond just status or q)
+    const hasFacets = source || from || to || confidence_min || confidence_max || department || offset;
+
+    if (hasFacets || (status && q)) {
+      // Use faceted query engine for any combination of filters
+      const filters = {
+        status,
+        source,
+        from,
+        to,
+        confidence_min: confidence_min !== undefined ? parseFloat(confidence_min) : undefined,
+        confidence_max: confidence_max !== undefined ? parseFloat(confidence_max) : undefined,
+        department,
+        q,
+        limit: maxResults,
+        offset: offsetNum,
+      };
+      return engramIndex.queryFaceted(user.userId, filters);
+    }
 
     if (status) {
-      return { engrams: engramIndex.listByStatus(user.userId, status, maxResults) };
+      const engrams = engramIndex.listByStatus(user.userId, status, maxResults);
+      return { engrams, total: engrams.length, limit: maxResults, offset: 0 };
     }
 
     if (q) {
@@ -59,10 +93,47 @@ export async function engramRoutes(
         }
       }
 
-      return { engrams: merged.slice(0, maxResults) };
+      const sliced = merged.slice(0, maxResults);
+      return { engrams: sliced, total: merged.length, limit: maxResults, offset: 0 };
     }
 
-    return { engrams: engramIndex.listAll(user.userId, maxResults) };
+    const engrams = engramIndex.listAll(user.userId, maxResults);
+    return { engrams, total: engrams.length, limit: maxResults, offset: 0 };
+  });
+
+  app.get('/api/engrams/export', async (req, reply) => {
+    const user = (req as any).user;
+    const { format = 'json', status } = req.query as {
+      format?: string;
+      status?: string;
+    };
+
+    const MAX_EXPORT = 10000;
+    const engrams = status
+      ? engramIndex.listByStatus(user.userId, status, MAX_EXPORT)
+      : engramIndex.listAll(user.userId, MAX_EXPORT);
+
+    if (format === 'csv') {
+      const header = 'id,concept,source_type,confidence,tags,approval_status,captured_at';
+      const escapeCsv = (val: string) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+      const rows = engrams.map((e) =>
+        [
+          escapeCsv(e.id),
+          escapeCsv(e.concept),
+          escapeCsv(e.sourceType),
+          e.confidence,
+          escapeCsv((e.tags ?? []).join(';')),
+          escapeCsv(e.approvalStatus),
+          escapeCsv(e.capturedAt),
+        ].join(','),
+      );
+      const csv = [header, ...rows].join('\n');
+      reply.header('Content-Type', 'text/csv');
+      reply.header('Content-Disposition', 'attachment; filename="engrams-export.csv"');
+      return csv;
+    }
+
+    return engrams;
   });
 
   app.get('/api/engrams/:id', async (req) => {

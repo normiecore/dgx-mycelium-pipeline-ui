@@ -69,8 +69,9 @@ export default function App() {
         <Route path="/*" element={
           <ProtectedRoute>
             <div className="app-layout">
+              <a href="#main-content" className="skip-link">Skip to content</a>
               <Sidebar />
-              <main className="main-content">
+              <main className="main-content" id="main-content">
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/queue" element={<Queue />} />

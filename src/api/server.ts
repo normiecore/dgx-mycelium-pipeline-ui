@@ -127,6 +127,7 @@ export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
   if (deps.deadLetterStore) {
     await app.register(deadLetterRoutes, {
       deadLetterStore: deps.deadLetterStore,
+      natsClient: deps.natsClient,
     });
   }
 

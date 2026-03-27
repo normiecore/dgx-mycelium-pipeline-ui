@@ -63,7 +63,7 @@ export default function Sidebar() {
         <div className="sidebar-overlay visible" onClick={closeMobile} />
       )}
 
-      <aside className={`sidebar${mobileExpanded ? ' sidebar-expanded' : ''}`}>
+      <aside className={`sidebar${mobileExpanded ? ' sidebar-expanded' : ''}`} role="navigation" aria-label="Main navigation">
         <div className="sidebar-brand">
           <span className="sidebar-logo">{'\uD83C\uDF44'}</span>
           <span className="sidebar-title">Mycelium</span>
@@ -99,7 +99,7 @@ export default function Sidebar() {
               {theme === 'dark' ? '\u2600' : '\u263D'}
             </button>
           </div>
-          <button className="sidebar-logout" onClick={() => { clearToken(); navigate('/login'); }}>
+          <button className="sidebar-logout" onClick={() => { clearToken(); navigate('/login'); }} aria-label="Logout">
             Logout
           </button>
         </div>
