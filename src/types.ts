@@ -6,6 +6,8 @@ export const SOURCE_TYPES = [
   'graph_calendar',
   'graph_document',
   'graph_task',
+  'desktop_screenshot',
+  'desktop_text',
 ] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
 
@@ -26,6 +28,14 @@ export const RawCaptureSchema = z.object({
   metadata: z.record(z.string(), z.unknown()),
 });
 export type RawCapture = z.infer<typeof RawCaptureSchema>;
+
+export const DesktopCaptureSchema = z.object({
+  source: z.string(),
+  content_type: z.enum(['image/png;base64', 'text/plain']),
+  content: z.string(),
+  captured_at: z.string(),
+});
+export type DesktopCapture = z.infer<typeof DesktopCaptureSchema>;
 
 export const ExtractionResultSchema = z.object({
   summary: z.string(),

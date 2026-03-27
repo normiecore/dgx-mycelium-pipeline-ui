@@ -6,6 +6,7 @@ import fastifyStatic from '@fastify/static';
 import type { AuthVerifier } from './auth.js';
 import { engramRoutes } from './routes/engrams.js';
 import { statsRoutes } from './routes/stats.js';
+import { captureRoutes } from './routes/captures.js';
 import type { MuninnDBClient } from '../storage/muninndb-client.js';
 import type { VaultManager } from '../storage/vault-manager.js';
 import type { EngramIndex } from '../storage/engram-index.js';
@@ -98,6 +99,11 @@ export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
 
   await app.register(statsRoutes, {
     muninnClient: deps.muninnClient,
+  });
+
+  await app.register(captureRoutes, {
+    natsClient: deps.natsClient!,
+    engramIndex: deps.engramIndex,
   });
 
   // WebSocket endpoint
