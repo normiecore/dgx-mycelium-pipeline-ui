@@ -1,3 +1,5 @@
+import { logger } from '../config/logger.js';
+
 export class MuninnDBClient {
   private baseUrl: string;
   private apiKey: string;
@@ -67,7 +69,7 @@ export class MuninnDBClient {
         const full = await this.read(vault, entry.id);
         engrams.push(full);
       } catch (err) {
-        console.warn(`Failed to read engram ${entry.id} from vault ${vault}:`, err);
+        logger.warn({ engramId: entry.id, vault, err }, 'Failed to read engram');
       }
     }
 

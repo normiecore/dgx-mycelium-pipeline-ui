@@ -1,3 +1,4 @@
+import { logger } from '../config/logger.js';
 import {
   connect,
   type NatsConnection,
@@ -42,7 +43,7 @@ export class NatsClient {
           const parsed: unknown = JSON.parse(sc.decode(msg.data));
           await handler(parsed);
         } catch (err) {
-          console.error(`Error processing message on topic "${topic}":`, err);
+          logger.error({ topic, err }, 'Error processing NATS message');
         }
       }
     })();

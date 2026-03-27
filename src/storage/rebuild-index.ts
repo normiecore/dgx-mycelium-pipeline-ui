@@ -1,3 +1,4 @@
+import { logger } from '../config/logger.js';
 import type { MuninnDBClient } from './muninndb-client.js';
 import type { EngramIndex } from './engram-index.js';
 import { VaultManager } from './vault-manager.js';
@@ -45,12 +46,12 @@ export async function rebuildIndex(
           });
           synced++;
         } catch (err) {
-          console.warn(`Failed to parse/index engram ${raw.id} in vault ${vault}:`, err);
+          logger.warn({ engramId: raw.id, vault, err }, 'Failed to parse/index engram');
           errors++;
         }
       }
     } catch (err) {
-      console.warn(`Failed to list engrams from vault ${vault}:`, err);
+      logger.warn({ vault, err }, 'Failed to list engrams from vault');
       errors++;
     }
   }
