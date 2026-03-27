@@ -73,6 +73,12 @@ export default function EngramCard({ engram, showActions = true, onAction, focus
           </div>
         )}
       </div>
+      {!expanded && tags.length > 0 && (
+        <div className="engram-tags-preview">
+          {tags.slice(0, 4).map((tag: string) => <span key={tag} className="tag tag-sm">{tag}</span>)}
+          {tags.length > 4 && <span className="tag tag-sm tag-more">+{tags.length - 4}</span>}
+        </div>
+      )}
 
       {expanded && (
         <div className="engram-details">

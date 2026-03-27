@@ -108,6 +108,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .raw-text { font-family: 'Fira Code', 'Consolas', monospace; font-size: 11px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; color: var(--text-secondary); overflow-x: auto; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
 .engram-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .tag { background: var(--tag-bg); color: var(--tag-text); padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+.tag-sm { font-size: 10px; padding: 1px 6px; }
+.tag-more { opacity: 0.6; }
+.engram-tags-preview { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .sensitivity-badge { padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; }
 .sensitivity-badge.safe { background: rgba(78,255,74,0.15); color: var(--success); }
 .sensitivity-badge.review { background: rgba(255,170,74,0.15); color: var(--warning); }
