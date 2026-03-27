@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { isAuthenticated } from './api';
+import { ToastProvider } from './components/Toast';
 import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 import Queue from './pages/Queue';
@@ -60,6 +61,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, Error
 export default function App() {
   return (
     <ErrorBoundary>
+      <ToastProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/*" element={
@@ -80,6 +82,7 @@ export default function App() {
           </ProtectedRoute>
         } />
       </Routes>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }

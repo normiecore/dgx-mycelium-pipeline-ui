@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { patchEngram } from '../api';
+import { useToast } from './Toast';
 
 const SOURCE_LABELS: Record<string, string> = {
   graph_email: 'Email',
@@ -28,6 +29,7 @@ interface EngramCardProps {
 export default function EngramCard({ engram, showActions = true, onAction, focused = false, onFocus }: EngramCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { addToast } = useToast();
 
   const confidence = engram.confidence ?? 0;
   const confidenceClass = confidence >= 0.7 ? 'high' : confidence >= 0.4 ? 'medium' : 'low';
@@ -46,9 +48,11 @@ export default function EngramCard({ engram, showActions = true, onAction, focus
     setLoading(true);
     try {
       await patchEngram(engram.id, status);
+      addToast('success', `Engram ${status}`, engram.concept || 'Engram updated successfully.');
       onAction?.();
     } catch (err) {
       console.error('Action failed:', err);
+      addToast('error', 'Action failed', 'Could not update the engram. Try again.');
     }
     setLoading(false);
   };

@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { fetchWithAuth } from '../api';
+import { SkeletonCard } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 
 interface DeadLetter {
   id: number;
@@ -16,6 +18,7 @@ export default function DeadLetters() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const { addToast } = useToast();
 
   const load = useCallback(async () => {
     try {
@@ -37,8 +40,9 @@ export default function DeadLetters() {
       await fetchWithAuth(`/api/dead-letters/${id}`, { method: 'DELETE' });
       setItems(prev => prev.filter(i => i.id !== id));
       setCount(prev => prev - 1);
+      addToast('success', 'Dead letter dismissed');
     } catch {
-      // ignore
+      addToast('error', 'Failed to dismiss dead letter');
     }
   };
 
@@ -46,7 +50,8 @@ export default function DeadLetters() {
     return (
       <div className="page">
         <h2>Dead Letters</h2>
-        <div className="page-loading"><div className="spinner" /><p>Loading...</p></div>
+        <p className="page-subtitle">Loading...</p>
+        <SkeletonCard count={3} />
       </div>
     );
   }

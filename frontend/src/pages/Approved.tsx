@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getEngrams, connectWebSocket } from '../api';
 import EngramCard from '../components/EngramCard';
+import { SkeletonCard } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 
 export default function Approved() {
   const [engrams, setEngrams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { addToast } = useToast();
 
   const loadEngrams = useCallback(async () => {
     try {
@@ -24,19 +27,18 @@ export default function Approved() {
     const ws = connectWebSocket((data) => {
       if (data.type === 'engram_updated' && data.status === 'approved') {
         loadEngrams();
+        addToast('success', 'Engram approved', data.concept || 'A new engram was approved.');
       }
     });
     return () => ws.close();
-  }, [loadEngrams]);
+  }, [loadEngrams, addToast]);
 
   if (loading) {
     return (
       <div className="page">
         <h2>Approved Knowledge</h2>
-        <div className="page-loading">
-          <div className="spinner" />
-          <p>Loading approved engrams...</p>
-        </div>
+        <p className="page-subtitle">Loading approved engrams...</p>
+        <SkeletonCard count={4} />
       </div>
     );
   }

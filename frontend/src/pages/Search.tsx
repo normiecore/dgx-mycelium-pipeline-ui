@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { getEngrams } from '../api';
 import EngramCard from '../components/EngramCard';
+import { SkeletonCard } from '../components/Skeleton';
 
 export default function Search() {
   const [query, setQuery] = useState('');
@@ -42,10 +43,7 @@ export default function Search() {
         </button>
       </form>
       {loading && (
-        <div className="page-loading">
-          <div className="spinner" />
-          <p>Searching...</p>
-        </div>
+        <SkeletonCard count={3} />
       )}
       {error && (
         <div className="error-state">

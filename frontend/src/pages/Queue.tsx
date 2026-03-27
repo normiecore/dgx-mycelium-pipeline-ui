@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { getEngrams, patchEngram, connectWebSocket } from '../api';
 import EngramCard from '../components/EngramCard';
+import { SkeletonCard } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 
 export default function Queue() {
   const [engrams, setEngrams] = useState<any[]>([]);
@@ -10,6 +12,7 @@ export default function Queue() {
   const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
   const [focusIndex, setFocusIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const { addToast } = useToast();
 
   const loadEngrams = useCallback(async () => {
     try {
@@ -31,13 +34,14 @@ export default function Queue() {
     const ws = connectWebSocket((data) => {
       if (data.type === 'new_engram') {
         loadEngrams(); // reload on new engram
+        addToast('info', 'New engram received', data.concept || 'A new knowledge item arrived for review.');
       }
       if (data.type === 'engram_updated' && (data.status === 'approved' || data.status === 'dismissed')) {
         setEngrams(prev => prev.filter(e => e.id !== data.id));
       }
     });
     return () => ws.close();
-  }, [loadEngrams]);
+  }, [loadEngrams, addToast]);
 
   // Keep focusIndex in bounds when engrams change
   useEffect(() => {
@@ -55,10 +59,12 @@ export default function Queue() {
     try {
       await patchEngram(target.id, status);
       setEngrams(prev => prev.filter(e => e.id !== target.id));
+      addToast('success', `Engram ${status}`, target.concept || 'Engram updated successfully.');
     } catch (err) {
       console.error('Action failed:', err);
+      addToast('error', 'Action failed', 'Could not update the engram. Try again.');
     }
-  }, [engrams, focusIndex]);
+  }, [engrams, focusIndex, addToast]);
 
   // Batch action: process engrams sequentially
   const handleBatchAction = useCallback(async (status: string) => {
@@ -66,18 +72,27 @@ export default function Queue() {
     const ids = engrams.map(e => e.id);
     setBatchAction(status);
     setBatchProgress({ done: 0, total: ids.length });
+    let successCount = 0;
+    let failCount = 0;
     for (let i = 0; i < ids.length; i++) {
       try {
         await patchEngram(ids[i], status);
         setBatchProgress({ done: i + 1, total: ids.length });
         setEngrams(prev => prev.filter(e => e.id !== ids[i]));
+        successCount++;
       } catch (err) {
         console.error(`Batch ${status} failed for ${ids[i]}:`, err);
+        failCount++;
       }
     }
     setBatchAction(null);
     setBatchProgress({ done: 0, total: 0 });
-  }, [engrams, batchAction]);
+    if (failCount === 0) {
+      addToast('success', `Batch ${status}`, `All ${successCount} engrams ${status} successfully.`);
+    } else {
+      addToast('warning', `Batch ${status} partial`, `${successCount} succeeded, ${failCount} failed.`);
+    }
+  }, [engrams, batchAction, addToast]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -121,10 +136,8 @@ export default function Queue() {
     return (
       <div className="page">
         <h2>Review Queue</h2>
-        <div className="page-loading">
-          <div className="spinner" />
-          <p>Loading engrams...</p>
-        </div>
+        <p className="page-subtitle">Loading engrams...</p>
+        <SkeletonCard count={5} />
       </div>
     );
   }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getHealth } from '../api';
 import StatusBadge from '../components/StatusBadge';
+import { SkeletonMetricGrid, SkeletonText } from '../components/Skeleton';
 
 export default function Health() {
   const [health, setHealth] = useState<any>(null);
@@ -21,9 +22,20 @@ export default function Health() {
     return (
       <div className="page">
         <h2>Pipeline Health</h2>
-        <div className="page-loading">
-          <div className="spinner" />
-          <p>Loading health data...</p>
+        <p className="page-subtitle">Loading health data...</p>
+        <div className="health-section">
+          <h3>Services</h3>
+          <SkeletonMetricGrid count={3} />
+        </div>
+        <div className="health-section">
+          <h3>Pipeline Metrics</h3>
+          <SkeletonMetricGrid count={4} />
+        </div>
+        <div className="health-section">
+          <h3>System</h3>
+          <div style={{ background: 'var(--bg-card)', padding: 14, borderRadius: 8 }}>
+            <SkeletonText width="medium" count={3} />
+          </div>
         </div>
       </div>
     );
@@ -101,7 +113,7 @@ export default function Health() {
           </div>
           <div>
             <span className="info-label">Timestamp:</span>{' '}
-            {health.timestamp ? new Date(health.timestamp).toLocaleString() : '—'}
+            {health.timestamp ? new Date(health.timestamp).toLocaleString() : '\u2014'}
           </div>
           <div>
             <span className="info-label">Last Poll:</span>{' '}
