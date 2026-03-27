@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getEngramDetail, patchEngram } from '../api';
+import { useToast } from '../components/Toast';
 
 const SOURCE_LABELS: Record<string, string> = {
   graph_email: 'Email',
@@ -54,7 +55,7 @@ export default function EngramDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const { addToast } = useToast();
   const [sourceExpanded, setSourceExpanded] = useState(false);
 
   const loadEngram = useCallback(async () => {
@@ -74,22 +75,21 @@ export default function EngramDetail() {
     loadEngram();
   }, [loadEngram]);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
-
   const handleAction = async (status: string) => {
     if (!id) return;
     setActionLoading(true);
     try {
       await patchEngram(id, status);
-      showToast(status === 'approved' ? 'Engram approved' : 'Engram dismissed');
+      if (status === 'approved') {
+        addToast('success', 'Approved');
+      } else {
+        addToast('info', 'Dismissed');
+      }
       // Refresh data to reflect new status
       await loadEngram();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Action failed:', err);
-      showToast('Action failed. Please try again.');
+      addToast('error', 'Action failed', err?.message);
     }
     setActionLoading(false);
   };
@@ -164,9 +164,6 @@ export default function EngramDetail() {
 
   return (
     <div className="page engram-detail-page">
-      {/* Toast notification */}
-      {toast && <div className="toast">{toast}</div>}
-
       {/* Back navigation */}
       <button className="btn-back" onClick={() => navigate(-1)}>
         &larr; Back

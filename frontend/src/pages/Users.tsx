@@ -101,7 +101,7 @@ export default function Users() {
       })
       .catch(() => addToast('error', 'Failed to load user details'))
       .finally(() => setDrawerLoading(false));
-  }, [drawerUserId]);
+  }, [drawerUserId, addToast]);
 
   const handleToggleHarvesting = async (user: UserRow) => {
     const newVal = !user.harvestingEnabled;

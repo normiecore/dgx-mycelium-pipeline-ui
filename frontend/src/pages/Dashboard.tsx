@@ -70,7 +70,7 @@ export default function Dashboard() {
         setTags(tg.tags);
         setConfidence(conf.distribution);
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => setError(err?.message || 'Failed to load analytics'))
       .finally(() => setLoading(false));
   };
 

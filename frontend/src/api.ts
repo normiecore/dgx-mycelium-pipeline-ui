@@ -55,10 +55,12 @@ export async function getEngrams(status?: string, q?: string): Promise<any> {
   return fetchAPI(`/api/engrams?${params}`);
 }
 
-export async function patchEngram(id: string, approvalStatus: string, department = 'Engineering'): Promise<any> {
+export async function patchEngram(id: string, approvalStatus: string, department?: string): Promise<any> {
+  const body: Record<string, string> = { approval_status: approvalStatus };
+  if (department !== undefined) body.department = department;
   return fetchAPI(`/api/engrams/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ approval_status: approvalStatus, department }),
+    body: JSON.stringify(body),
   });
 }
 

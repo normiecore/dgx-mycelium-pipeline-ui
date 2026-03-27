@@ -211,7 +211,7 @@ describe('user routes', () => {
     const body = JSON.parse(res.body);
 
     expect(res.statusCode).toBe(200);
-    expect(body.user.harvestingEnabled).toBe(0);
+    expect(body.user.harvestingEnabled).toBe(false);
   });
 
   it('PATCH /api/users/:id returns 404 for non-existent user', async () => {

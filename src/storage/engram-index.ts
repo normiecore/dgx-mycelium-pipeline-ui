@@ -155,8 +155,9 @@ export class EngramIndex {
 
     // Build a query that matches any of the tags
     // Use LIKE for each tag to find overlapping engrams
-    const conditions = tagList.map(() => `e.tags LIKE ?`);
-    const params = tagList.map((t) => `%${t}%`);
+    const escapeLike = (s: string) => s.replace(/%/g, '\\%').replace(/_/g, '\\_');
+    const conditions = tagList.map(() => `e.tags LIKE ? ESCAPE '\\'`);
+    const params = tagList.map((t) => `%${escapeLike(t)}%`);
 
     return this.db.prepare(
       `SELECT id, user_id AS userId, concept, approval_status AS approvalStatus,

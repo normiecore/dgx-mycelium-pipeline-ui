@@ -13,8 +13,11 @@ export async function analyticsRoutes(
 ): Promise<void> {
   const { engramIndex, metrics } = opts;
 
+  const MS_PER_DAY = 86_400_000;
+
   // GET /api/analytics/overview — summary stats
-  app.get('/api/analytics/overview', async (req) => {
+  app.get('/api/analytics/overview', async (req, reply) => {
+    try {
     const user = (req as any).user;
     const db = (engramIndex as any).db;
 
@@ -33,8 +36,8 @@ export async function analyticsRoutes(
 
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
-    const weekAgo = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10);
-    const monthAgo = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
+    const weekAgo = new Date(now.getTime() - 7 * MS_PER_DAY).toISOString().slice(0, 10);
+    const monthAgo = new Date(now.getTime() - 30 * MS_PER_DAY).toISOString().slice(0, 10);
 
     const countSince = (since: string): number => {
       const row = db.prepare(
@@ -66,10 +69,15 @@ export async function analyticsRoutes(
       avgConfidence: avgRow.avg != null ? Math.round(avgRow.avg * 1000) / 1000 : 0,
       pipeline: metricsSnapshot,
     };
+    } catch (err) {
+      req.log.error({ err }, 'Failed to load analytics overview');
+      return reply.status(500).send({ error: 'Failed to load analytics' });
+    }
   });
 
   // GET /api/analytics/volume?period=day|week|month — time-series capture volume
-  app.get('/api/analytics/volume', async (req) => {
+  app.get('/api/analytics/volume', async (req, reply) => {
+    try {
     const user = (req as any).user;
     const { period } = req.query as { period?: string };
     const db = (engramIndex as any).db;
@@ -88,7 +96,7 @@ export async function analyticsRoutes(
         break;
     }
 
-    const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    const since = new Date(Date.now() - days * MS_PER_DAY).toISOString().slice(0, 10);
 
     const rows = db.prepare(
       `SELECT
@@ -110,10 +118,15 @@ export async function analyticsRoutes(
     }>;
 
     return { period: period || 'day', days, volume: rows };
+    } catch (err) {
+      req.log.error({ err }, 'Failed to load analytics volume');
+      return reply.status(500).send({ error: 'Failed to load analytics' });
+    }
   });
 
   // GET /api/analytics/sources — breakdown by source type
-  app.get('/api/analytics/sources', async (req) => {
+  app.get('/api/analytics/sources', async (req, reply) => {
+    try {
     const user = (req as any).user;
     const db = (engramIndex as any).db;
 
@@ -132,10 +145,15 @@ export async function analyticsRoutes(
     }));
 
     return { sources };
+    } catch (err) {
+      req.log.error({ err }, 'Failed to load analytics sources');
+      return reply.status(500).send({ error: 'Failed to load analytics' });
+    }
   });
 
   // GET /api/analytics/top-tags?limit=20 — most frequent tags
-  app.get('/api/analytics/top-tags', async (req) => {
+  app.get('/api/analytics/top-tags', async (req, reply) => {
+    try {
     const user = (req as any).user;
     const { limit } = req.query as { limit?: string };
     const maxTags = parseInt(limit || '20', 10);
@@ -159,10 +177,15 @@ export async function analyticsRoutes(
       .map(([tag, count]) => ({ tag, count }));
 
     return { tags: sorted };
+    } catch (err) {
+      req.log.error({ err }, 'Failed to load analytics top-tags');
+      return reply.status(500).send({ error: 'Failed to load analytics' });
+    }
   });
 
   // GET /api/analytics/confidence — confidence distribution
-  app.get('/api/analytics/confidence', async (req) => {
+  app.get('/api/analytics/confidence', async (req, reply) => {
+    try {
     const user = (req as any).user;
     const db = (engramIndex as any).db;
 
@@ -190,5 +213,9 @@ export async function analyticsRoutes(
     }));
 
     return { distribution };
+    } catch (err) {
+      req.log.error({ err }, 'Failed to load analytics confidence');
+      return reply.status(500).send({ error: 'Failed to load analytics' });
+    }
   });
 }

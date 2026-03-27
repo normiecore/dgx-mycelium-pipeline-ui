@@ -7,6 +7,13 @@ interface UserRoutesOpts extends FastifyPluginOptions {
   engramIndex: EngramIndex;
 }
 
+/** Convert SQLite 0/1 integer to boolean for API responses */
+function toApiUser<T extends { harvestingEnabled: number }>(
+  user: T,
+): Omit<T, 'harvestingEnabled'> & { harvestingEnabled: boolean } {
+  return { ...user, harvestingEnabled: Boolean(user.harvestingEnabled) };
+}
+
 export async function userRoutes(
   app: FastifyInstance,
   opts: UserRoutesOpts,
@@ -27,11 +34,12 @@ export async function userRoutes(
 
     if (q) {
       const { users: rawUsers, total } = userStore.search(q, pageNum, limitNum);
-      const users = rawUsers.map((u) => ({ ...u, stats: userStore.getStats(u.id) }));
+      const users = rawUsers.map((u) => ({ ...toApiUser(u), stats: userStore.getStats(u.id) }));
       return { users, total, page: pageNum, limit: limitNum };
     }
 
-    const { users, total } = userStore.getAllWithStats(pageNum, limitNum, department);
+    const { users: rawUsers, total } = userStore.getAllWithStats(pageNum, limitNum, department);
+    const users = rawUsers.map((u) => ({ ...toApiUser(u), stats: u.stats }));
     return { users, total, page: pageNum, limit: limitNum };
   });
 
@@ -54,7 +62,7 @@ export async function userRoutes(
     // Fetch recent engrams for the detail view
     const recentEngrams = engramIndex.listAll(id, 10);
 
-    return { user, stats, recentEngrams };
+    return { user: toApiUser(user), stats, recentEngrams };
   });
 
   // PATCH /api/users/:id — Update department, role, harvesting_enabled
@@ -90,7 +98,7 @@ export async function userRoutes(
     }
 
     const updated = userStore.getById(id);
-    return { user: updated };
+    return { user: updated ? toApiUser(updated) : updated };
   });
 
   // POST /api/users/:id/sync-stats — Recalculate stats from engram_index
