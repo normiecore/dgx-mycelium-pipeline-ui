@@ -1,0 +1,30 @@
+# =============================================================================
+# PaddleOCR overlay -- use with:
+#   docker compose -f docker-compose.yml -f docker-compose.ocr.yml up -d
+# =============================================================================
+#
+# This adds a PaddleOCR Hub Serving container for screenshot text extraction.
+# The pipeline service picks it up automatically via OCR_BASE_URL.
+# =============================================================================
+
+services:
+  paddleocr:
+    image: paddlepaddle/paddleocr:latest
+    restart: unless-stopped
+    ports:
+      - "8866:8866"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8866/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Override pipeline to depend on paddleocr and inject env vars
+  pipeline:
+    depends_on:
+      paddleocr:
+        condition: service_healthy
+    environment:
+      - OCR_BASE_URL=http://paddleocr:8866
+      - OCR_ENABLED=true

@@ -55,6 +55,7 @@ export interface HarvesterEngram {
   sensitivity_classification: SensitivityClassification;
   tags: string[];
   raw_text: string;
+  source_metadata?: Record<string, unknown>;
 }
 
 export interface DepartmentEngram {

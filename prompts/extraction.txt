@@ -15,6 +15,27 @@ Respond with a JSON object containing exactly these fields:
     - "block": Content that clearly contains personal, HR, medical, financial, or confidential information
   - "reasoning": A brief explanation of why you chose this classification
 
+## Desktop Activity Metadata
+
+For desktop captures, you may receive additional activity metadata fields alongside the raw content. Use these to produce richer, more accurate extractions:
+
+- **triggerReason** (window_change | idle_to_active | periodic): Tells you why this capture was taken. A "periodic" capture during sustained focus is more likely to contain deep work.
+- **appCategory** (editor | browser | communication | document | terminal | other): Use this to infer the nature of the work and generate better tags (e.g., appCategory "terminal" suggests development work).
+- **durationSeconds**: How long the user was in this window. High duration (>60s) indicates sustained focus — increase confidence accordingly, as this represents deeper engagement with the material.
+- **idleSeconds**: Seconds since last user input. High idle time may mean the user stepped away; weigh content lower.
+- **documentName**: The extracted filename (e.g., "ROV-123.xlsx"). Use this for precise tags and to name the artifact in the summary.
+- **browserUrl**: The page URL if in a browser. Extract domain and path for context (e.g., a SharePoint URL indicates internal documentation).
+- **previousWindow**: What the user came from. Use this to build narrative context (e.g., "User switched from Teams to Excel" implies acting on a discussion).
+- **sessionContext**: The last 3-5 window transitions with durations. Use this to construct a workflow narrative in the summary (e.g., "User spent 45 min reviewing ROV-123.xlsx after discussing in Teams, then opened AutoCAD").
+- **captureSequence**: Position in the current session. Early captures may be exploratory; later captures in the same app suggest deeper work.
+- **windowTitle, windowOwner**: The full window title and owning process. Parse these for project names, document titles, and application context.
+
+When these metadata fields are present:
+1. Write richer summaries that incorporate workflow context (e.g., "User spent 45 min reviewing ROV-123.xlsx after discussing in Teams" rather than just "User viewed ROV-123.xlsx").
+2. Increase confidence when durationSeconds is high (>120s = sustained focus = likely meaningful knowledge).
+3. Derive additional tags from appCategory, documentName, and browserUrl (e.g., document name "FEA-Report-v3.docx" yields tags like "fea", "report").
+4. Use sessionContext and previousWindow to identify knowledge workflows — transitions between communication apps and document apps often signal actionable knowledge transfer.
+
 Rules:
 1. Never fabricate information not present in the source content.
 2. If the content is trivial (e.g., "ok", "thanks"), set confidence below 0.3.

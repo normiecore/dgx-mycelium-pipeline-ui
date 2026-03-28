@@ -8,8 +8,31 @@ export interface EngramIndexRow {
   capturedAt: string;
   sourceType: string;
   confidence: number;
+  department?: string;
   /** Optional tags for full-text search indexing */
   tags?: readonly string[];
+}
+
+/** Filters for faceted engram queries */
+export interface EngramFacetFilters {
+  status?: string;
+  source?: string;
+  from?: string;
+  to?: string;
+  confidence_min?: number;
+  confidence_max?: number;
+  department?: string;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** Paginated result set */
+export interface PaginatedEngrams {
+  engrams: EngramIndexRow[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 /** Row shape returned by the FTS5 search method */
@@ -40,12 +63,19 @@ export class EngramIndex {
       captured_at TEXT NOT NULL,
       source_type TEXT NOT NULL,
       confidence REAL NOT NULL,
+      department TEXT NOT NULL DEFAULT 'unassigned',
       tags TEXT NOT NULL DEFAULT '',
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`);
     this.db.exec(
       `CREATE INDEX IF NOT EXISTS idx_user_status ON engram_index (user_id, approval_status)`,
     );
+    // Add department column if migrating from an older schema
+    try {
+      this.db.exec(`ALTER TABLE engram_index ADD COLUMN department TEXT NOT NULL DEFAULT 'unassigned'`);
+    } catch {
+      // Column already exists -- ignore
+    }
 
     // FTS5 virtual table for full-text search over concept and tags
     this.db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS engram_fts USING fts5(
@@ -79,15 +109,17 @@ export class EngramIndex {
 
   upsert(row: EngramIndexRow): void {
     const tagsStr = row.tags ? row.tags.join(' ') : '';
+    const dept = row.department || 'unassigned';
     this.db.prepare(
-      `INSERT INTO engram_index (id, user_id, concept, approval_status, captured_at, source_type, confidence, tags)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO engram_index (id, user_id, concept, approval_status, captured_at, source_type, confidence, department, tags)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (id) DO UPDATE SET
         concept = excluded.concept,
         approval_status = excluded.approval_status,
+        department = excluded.department,
         tags = excluded.tags,
         updated_at = datetime('now')`,
-    ).run(row.id, row.userId, row.concept, row.approvalStatus, row.capturedAt, row.sourceType, row.confidence, tagsStr);
+    ).run(row.id, row.userId, row.concept, row.approvalStatus, row.capturedAt, row.sourceType, row.confidence, dept, tagsStr);
   }
 
   /**
@@ -136,6 +168,108 @@ export class EngramIndex {
       WHERE user_id = ?
       ORDER BY captured_at DESC LIMIT ?`,
     ).all(userId, limit) as EngramIndexRow[];
+  }
+
+  /**
+   * Find engrams that share at least one tag with the given engram.
+   * Returns up to `limit` results for the same user, excluding the source engram.
+   */
+  findRelatedByTags(userId: string, engramId: string, limit = 5): EngramIndexRow[] {
+    // First get the tags for the source engram
+    const source = this.db.prepare(
+      `SELECT tags FROM engram_index WHERE id = ? AND user_id = ?`,
+    ).get(engramId, userId) as { tags: string } | undefined;
+
+    if (!source || !source.tags.trim()) return [];
+
+    const tagList = source.tags.trim().split(/\s+/);
+    if (tagList.length === 0) return [];
+
+    // Build a query that matches any of the tags
+    // Use LIKE for each tag to find overlapping engrams
+    const escapeLike = (s: string) => s.replace(/%/g, '\\%').replace(/_/g, '\\_');
+    const conditions = tagList.map(() => `e.tags LIKE ? ESCAPE '\\'`);
+    const params = tagList.map((t) => `%${escapeLike(t)}%`);
+
+    return this.db.prepare(
+      `SELECT id, user_id AS userId, concept, approval_status AS approvalStatus,
+        captured_at AS capturedAt, source_type AS sourceType, confidence, tags
+      FROM engram_index e
+      WHERE e.user_id = ? AND e.id != ? AND (${conditions.join(' OR ')})
+      ORDER BY e.captured_at DESC
+      LIMIT ?`,
+    ).all(userId, engramId, ...params, limit) as EngramIndexRow[];
+  }
+
+  /**
+   * Faceted query with dynamic WHERE clauses using parameterized queries.
+   * Returns a paginated result set with total count.
+   */
+  queryFaceted(userId: string, filters: EngramFacetFilters): PaginatedEngrams {
+    const conditions: string[] = ['user_id = ?'];
+    const params: (string | number)[] = [userId];
+
+    if (filters.status) {
+      conditions.push('approval_status = ?');
+      params.push(filters.status);
+    }
+    if (filters.source) {
+      conditions.push('source_type = ?');
+      params.push(filters.source);
+    }
+    if (filters.from) {
+      conditions.push('captured_at >= ?');
+      params.push(filters.from);
+    }
+    if (filters.to) {
+      conditions.push('captured_at <= ?');
+      params.push(filters.to);
+    }
+    if (filters.confidence_min !== undefined) {
+      conditions.push('confidence >= ?');
+      params.push(filters.confidence_min);
+    }
+    if (filters.confidence_max !== undefined) {
+      conditions.push('confidence <= ?');
+      params.push(filters.confidence_max);
+    }
+    if (filters.department) {
+      conditions.push('department = ?');
+      params.push(filters.department);
+    }
+    if (filters.q) {
+      conditions.push('(concept LIKE ? OR tags LIKE ?)');
+      const like = `%${filters.q}%`;
+      params.push(like, like);
+    }
+
+    const where = conditions.join(' AND ');
+    const limit = filters.limit ?? 20;
+    const offset = filters.offset ?? 0;
+
+    const countRow = this.db.prepare(
+      `SELECT COUNT(*) AS cnt FROM engram_index WHERE ${where}`,
+    ).get(...params) as { cnt: number };
+    const total = countRow.cnt;
+
+    const engrams = this.db.prepare(
+      `SELECT id, user_id AS userId, concept, approval_status AS approvalStatus,
+        captured_at AS capturedAt, source_type AS sourceType, confidence, department
+      FROM engram_index
+      WHERE ${where}
+      ORDER BY captured_at DESC
+      LIMIT ? OFFSET ?`,
+    ).all(...params, limit, offset) as EngramIndexRow[];
+
+    return { engrams, total, limit, offset };
+  }
+
+  /** Return distinct departments for the given user's engrams. */
+  listDepartments(userId: string): string[] {
+    const rows = this.db.prepare(
+      `SELECT DISTINCT department FROM engram_index WHERE user_id = ? ORDER BY department`,
+    ).all(userId) as { department: string }[];
+    return rows.map((r) => r.department);
   }
 
   updateStatus(id: string, status: string): void {

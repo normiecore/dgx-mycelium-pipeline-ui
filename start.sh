@@ -16,7 +16,7 @@ fi
 export NATS_URL="${NATS_URL:-nats://localhost:4222}"
 export MUNINNDB_URL="${MUNINNDB_URL:-http://localhost:3030}"
 export LLM_BASE_URL="${LLM_BASE_URL:-http://localhost:8000/v1}"
-export LLM_MODEL="${LLM_MODEL:-hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4}"
+export LLM_MODEL="${LLM_MODEL:-mistralai/Mistral-7B-Instruct-v0.3}"
 export AUTH_MODE="${AUTH_MODE:-dev}"
 export JWT_DEV_SECRET="${JWT_DEV_SECRET:-mycelium-dev-secret}"
 export POLL_INTERVAL_MS="${POLL_INTERVAL_MS:-30000}"
@@ -56,13 +56,18 @@ done
 
 # ---- Start vLLM ----
 echo "[2/3] Starting vLLM server (this may take a few minutes on first run)..."
-python3 -m vllm.entrypoints.openai.api_server \
-  --model "$LLM_MODEL" \
-  --quantization awq \
-  --max-model-len 4096 \
-  --gpu-memory-utilization 0.85 \
-  --host 0.0.0.0 \
-  --port 8000 &
+VLLM_ARGS=(
+  --model "$LLM_MODEL"
+  --max-model-len "${LLM_MAX_MODEL_LEN:-8192}"
+  --gpu-memory-utilization 0.85
+  --host 0.0.0.0
+  --port 8000
+)
+# Add quantization flag only when explicitly set (e.g. for AWQ/GPTQ models)
+if [ -n "${LLM_QUANTIZATION:-}" ]; then
+  VLLM_ARGS+=(--quantization "$LLM_QUANTIZATION")
+fi
+python3 -m vllm.entrypoints.openai.api_server "${VLLM_ARGS[@]}" &
 VLLM_PID=$!
 
 # Wait for vLLM (model download + load can take minutes)

@@ -5,6 +5,9 @@ function mockWebSocket(readyState = 1) {
   return {
     readyState,
     send: vi.fn(),
+    on: vi.fn(),
+    ping: vi.fn(),
+    terminate: vi.fn(),
   } as any;
 }
 

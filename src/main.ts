@@ -11,6 +11,7 @@ import { Deduplicator } from './pipeline/deduplicator.js';
 import { PipelineProcessor } from './pipeline/processor.js';
 import { PipelineMetrics } from './pipeline/metrics.js';
 import { ConcurrencyLimiter } from './pipeline/concurrency-limiter.js';
+import { OcrClient } from './pipeline/ocr.js';
 import { MuninnDBClient } from './storage/muninndb-client.js';
 import { VaultManager } from './storage/vault-manager.js';
 import { EngramIndex } from './storage/engram-index.js';
@@ -22,6 +23,9 @@ import { rebuildIndex } from './storage/rebuild-index.js';
 import type { GraphUser, GraphPagedResponse } from './ingestion/graph-types.js';
 import { UserCache } from './ingestion/user-cache.js';
 import { DeadLetterStore } from './storage/dead-letter-store.js';
+import { UserStore } from './storage/user-store.js';
+import { AuditStore } from './storage/audit-store.js';
+import { SettingsStore } from './storage/settings-store.js';
 import OpenAI from 'openai';
 import type { Client } from '@microsoft/microsoft-graph-client';
 
@@ -72,6 +76,9 @@ async function main(): Promise<void> {
   const deduplicator = new Deduplicator('dedup-state.db');
   const engramIndex = new EngramIndex('engram-index.db');
   const deadLetterStore = new DeadLetterStore('dead-letter.db');
+  const userStore = new UserStore('user-store.db');
+  const auditStore = new AuditStore('audit.db');
+  const settingsStore = new SettingsStore('settings.db');
 
   // MuninnDB + VaultManager
   const muninnClient = new MuninnDBClient(config.muninndb.url, config.muninndb.apiKey);
@@ -105,6 +112,23 @@ async function main(): Promise<void> {
   const metrics = new PipelineMetrics('metrics.db');
   const limiter = new ConcurrencyLimiter(config.maxConcurrentExtractions);
 
+  // OCR client (optional -- pipeline degrades gracefully if unavailable)
+  let ocrClient: OcrClient | undefined;
+  if (config.ocr.enabled) {
+    ocrClient = new OcrClient(config.ocr.baseUrl, config.ocr.timeoutMs);
+    const ocrUp = await ocrClient.isAvailable();
+    if (ocrUp) {
+      logger.info({ url: config.ocr.baseUrl }, 'PaddleOCR service is available');
+    } else {
+      logger.warn(
+        { url: config.ocr.baseUrl },
+        'PaddleOCR service is not reachable at startup (will retry per-request)',
+      );
+    }
+  } else {
+    logger.info('OCR disabled (set OCR_ENABLED=true to enable)');
+  }
+
   // Pipeline processor
   const processor = new PipelineProcessor(
     extractor,
@@ -114,6 +138,8 @@ async function main(): Promise<void> {
     engramIndex,
     limiter,
     metrics,
+    ocrClient,
+    settingsStore,
   );
 
   // Subscribe to raw captures on NATS
@@ -270,6 +296,9 @@ async function main(): Promise<void> {
     natsClient: nats,
     userCache,
     deadLetterStore,
+    userStore,
+    auditStore,
+    settingsStore,
     config: {
       llmBaseUrl: config.llm.baseUrl,
       muninndbUrl: config.muninndb.url,
@@ -284,12 +313,16 @@ async function main(): Promise<void> {
     logger.info('Shutting down...');
     clearInterval(pollInterval);
     clearInterval(purgeInterval);
+    wsManager.close();
     await server.close();
     await nats.disconnect();
     deltaStore.close();
     deduplicator.close();
     engramIndex.close();
     deadLetterStore.close();
+    userStore.close();
+    auditStore.close();
+    settingsStore.close();
     metrics.close();
     logger.info('Shutdown complete');
     process.exit(0);

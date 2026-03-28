@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { fetchWithAuth } from '../api';
+import { fetchWithAuth, retryDeadLetter } from '../api';
+import { SkeletonCard } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 
 interface DeadLetter {
   id: number;
@@ -16,6 +18,7 @@ export default function DeadLetters() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const { addToast } = useToast();
 
   const load = useCallback(async () => {
     try {
@@ -32,13 +35,25 @@ export default function DeadLetters() {
 
   useEffect(() => { load(); }, [load]);
 
+  const handleRetry = async (id: number) => {
+    try {
+      await retryDeadLetter(String(id));
+      setItems(prev => prev.filter(i => i.id !== id));
+      setCount(prev => prev - 1);
+      addToast('success', 'Dead letter requeued', 'The capture has been sent back to the pipeline for reprocessing.');
+    } catch {
+      addToast('error', 'Retry failed', 'Could not requeue the dead letter. Try again.');
+    }
+  };
+
   const handleDelete = async (id: number) => {
     try {
       await fetchWithAuth(`/api/dead-letters/${id}`, { method: 'DELETE' });
       setItems(prev => prev.filter(i => i.id !== id));
       setCount(prev => prev - 1);
+      addToast('success', 'Dead letter dismissed');
     } catch {
-      // ignore
+      addToast('error', 'Failed to dismiss dead letter');
     }
   };
 
@@ -46,7 +61,8 @@ export default function DeadLetters() {
     return (
       <div className="page">
         <h2>Dead Letters</h2>
-        <div className="page-loading"><div className="spinner" /><p>Loading...</p></div>
+        <p className="page-subtitle">Loading...</p>
+        <SkeletonCard count={3} />
       </div>
     );
   }
@@ -83,6 +99,7 @@ export default function DeadLetters() {
                   </div>
                 </div>
                 <div className="engram-actions" onClick={e => e.stopPropagation()}>
+                  <button className="btn-approve" onClick={() => handleRetry(item.id)}>Retry</button>
                   <button className="btn-dismiss" onClick={() => handleDelete(item.id)}>Dismiss</button>
                 </div>
               </div>

@@ -23,6 +23,7 @@ export function buildEngram(
     sensitivity_classification: extraction.sensitivity.classification,
     tags: extraction.tags,
     raw_text: capture.rawContent,
+    source_metadata: capture.metadata,
     notification_priority: extraction.confidence >= 0.7 ? 'notify' : 'silent',
   };
 }

@@ -1,36 +1,48 @@
-# Mycelium Pipeline — All-in-one RunPod image
+# =============================================================================
+# Knowledge Harvester Pipeline -- All-in-one RunPod Image
+# =============================================================================
 # Base: vLLM's official image (pre-configured CUDA + PyTorch + vLLM)
 # Added: NATS server, Node.js pipeline + frontend
+#
+# Use this when you want a single container on RunPod (no docker-compose).
+# For multi-container setup, use docker-compose.yml instead.
+# =============================================================================
 
 FROM vllm/vllm-openai:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Node.js 22
+# Install Node.js 22 and curl (needed for health checks in start.sh)
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs \
+    && apt-get install -y nodejs curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install NATS server
-RUN curl -L https://github.com/nats-io/nats-server/releases/download/v2.10.24/nats-server-v2.10.24-linux-amd64.tar.gz | tar xz \
-    && mv nats-server-v2.10.24-linux-amd64/nats-server /usr/local/bin/ \
-    && rm -rf nats-server-v2.10.24-linux-amd64
+ARG NATS_VERSION=2.10.24
+RUN curl -L "https://github.com/nats-io/nats-server/releases/download/v${NATS_VERSION}/nats-server-v${NATS_VERSION}-linux-amd64.tar.gz" | tar xz \
+    && mv "nats-server-v${NATS_VERSION}-linux-amd64/nats-server" /usr/local/bin/ \
+    && rm -rf "nats-server-v${NATS_VERSION}-linux-amd64"
 
 # Create app directory
 WORKDIR /app
 
-# Build pipeline
+# Build pipeline (backend)
 COPY package*.json ./
 RUN npm ci
 COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npm run build
 
+# Prune dev dependencies after build
+RUN npm prune --omit=dev
+
 # Build frontend
 COPY frontend/package*.json ./frontend/
 RUN cd frontend && npm ci
 COPY frontend/ ./frontend/
 RUN cd frontend && npm run build
+# Clean up frontend source + node_modules (only the built assets matter)
+RUN rm -rf frontend/node_modules frontend/src frontend/public
 
 # Copy runtime files
 COPY prompts/ ./prompts/
@@ -44,9 +56,14 @@ RUN chmod +x /app/start.sh
 
 ENV DATA_DIR=/data
 ENV HF_HOME=/data/huggingface
+ENV NODE_ENV=production
 
-EXPOSE 3001 4222 8000
+EXPOSE 3001 4222 8000 8222
 
-# Override vLLM's default entrypoint — we manage all services via start.sh
+# Health check targets the pipeline API
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
+  CMD curl -f http://localhost:3001/api/health || exit 1
+
+# Override vLLM's default entrypoint -- we manage all services via start.sh
 ENTRYPOINT []
 CMD ["/bin/bash", "/app/start.sh"]

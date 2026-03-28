@@ -22,6 +22,11 @@ const ConfigSchema = z.object({
   }),
   pollIntervalMs: z.number().int().positive(),
   maxConcurrentExtractions: z.number().int().positive(),
+  ocr: z.object({
+    baseUrl: z.string().url(),
+    timeoutMs: z.number().int().positive(),
+    enabled: z.boolean(),
+  }),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -52,5 +57,10 @@ export function loadConfig(): Config {
       process.env.MAX_CONCURRENT_EXTRACTIONS || '8',
       10,
     ),
+    ocr: {
+      baseUrl: process.env.OCR_BASE_URL || 'http://paddleocr:8866',
+      timeoutMs: parseInt(process.env.OCR_TIMEOUT_MS || '10000', 10),
+      enabled: process.env.OCR_ENABLED !== 'false',
+    },
   });
 }
