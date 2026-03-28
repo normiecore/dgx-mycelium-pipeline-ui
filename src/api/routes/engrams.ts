@@ -6,6 +6,13 @@ import type { WebSocketManager } from '../ws.js';
 import type { UserCache } from '../../ingestion/user-cache.js';
 import type { AuditStore } from '../../storage/audit-store.js';
 import { VaultManager as VM } from '../../storage/vault-manager.js';
+import {
+  GetEngramsQuerySchema,
+  GetEngramExportQuerySchema,
+  EngramIdParamsSchema,
+  PatchEngramBodySchema,
+  BulkEngramBodySchema,
+} from '../schemas.js';
 
 interface EngramRoutesOpts extends FastifyPluginOptions {
   muninnClient: MuninnDBClient;
@@ -22,30 +29,24 @@ export async function engramRoutes(
 ): Promise<void> {
   const { muninnClient, vaultManager, engramIndex, wsManager, userCache, auditStore } = opts;
 
-  app.get('/api/engrams', async (req) => {
+  app.get('/api/engrams', async (req, reply) => {
     const user = (req as any).user;
+    const parsed = GetEngramsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Invalid query parameters', details: parsed.error.issues });
+    }
     const {
-      status, q, limit, offset,
+      status, q,
+      limit: rawLimit, offset: rawOffset,
       source, from, to,
       confidence_min, confidence_max,
       department,
-    } = req.query as {
-      status?: string;
-      q?: string;
-      limit?: string;
-      offset?: string;
-      source?: string;
-      from?: string;
-      to?: string;
-      confidence_min?: string;
-      confidence_max?: string;
-      department?: string;
-    };
-    const maxResults = Math.min(200, Math.max(1, parseInt(limit || '20', 10) || 20));
-    const offsetNum = Math.max(0, parseInt(offset || '0', 10) || 0);
+    } = parsed.data;
+    const maxResults = Math.min(200, Math.max(1, rawLimit));
+    const offsetNum = Math.max(0, rawOffset);
 
     // Check if any facet filters are active (beyond just status or q)
-    const hasFacets = source || from || to || confidence_min || confidence_max || department || offset;
+    const hasFacets = source || from || to || confidence_min !== undefined || confidence_max !== undefined || department || offsetNum;
 
     if (hasFacets || (status && q)) {
       // Use faceted query engine for any combination of filters
@@ -54,8 +55,8 @@ export async function engramRoutes(
         source,
         from,
         to,
-        confidence_min: confidence_min !== undefined ? parseFloat(confidence_min) : undefined,
-        confidence_max: confidence_max !== undefined ? parseFloat(confidence_max) : undefined,
+        confidence_min,
+        confidence_max,
         department,
         q,
         limit: maxResults,
@@ -103,12 +104,13 @@ export async function engramRoutes(
     return { engrams, total: engrams.length, limit: maxResults, offset: 0 };
   });
 
-  app.get('/api/engrams/export', async (req, reply) => {
+  app.get('/api/engrams/export', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const user = (req as any).user;
-    const { format = 'json', status } = req.query as {
-      format?: string;
-      status?: string;
-    };
+    const exportParsed = GetEngramExportQuerySchema.safeParse(req.query);
+    if (!exportParsed.success) {
+      return reply.code(400).send({ error: 'Invalid query parameters', details: exportParsed.error.issues });
+    }
+    const { format, status } = exportParsed.data;
 
     const MAX_EXPORT = 10000;
     const engrams = status
@@ -146,9 +148,13 @@ export async function engramRoutes(
     return engrams;
   });
 
-  app.get('/api/engrams/:id', async (req) => {
+  app.get('/api/engrams/:id', async (req, reply) => {
     const user = (req as any).user;
-    const { id } = req.params as { id: string };
+    const paramsParsed = EngramIdParamsSchema.safeParse(req.params);
+    if (!paramsParsed.success) {
+      return reply.code(400).send({ error: 'Invalid engram ID', details: paramsParsed.error.issues });
+    }
+    const { id } = paramsParsed.data;
     const result = await muninnClient.read(VM.personalVault(user.userId), id);
 
     // Enrich with related engrams (by shared tags) and local index metadata
@@ -163,15 +169,18 @@ export async function engramRoutes(
 
   app.patch('/api/engrams/:id', async (req, reply) => {
     const user = (req as any).user;
-    const { id } = req.params as { id: string };
-    const { approval_status } = req.body as {
-      approval_status: 'approved' | 'dismissed';
-    };
-
-    if (approval_status !== 'approved' && approval_status !== 'dismissed') {
-      reply.code(400);
-      return { error: 'approval_status must be "approved" or "dismissed"' };
+    const paramsParsed = EngramIdParamsSchema.safeParse(req.params);
+    if (!paramsParsed.success) {
+      return reply.code(400).send({ error: 'Invalid engram ID', details: paramsParsed.error.issues });
     }
+    const { id } = paramsParsed.data;
+
+    const bodyParsed = PatchEngramBodySchema.safeParse(req.body);
+    if (!bodyParsed.success) {
+      reply.code(400);
+      return { error: 'approval_status must be "approved" or "dismissed"', details: bodyParsed.error.issues };
+    }
+    const { approval_status } = bodyParsed.data;
 
     const vault = VM.personalVault(user.userId);
     const existing = await muninnClient.read(vault, id);
@@ -209,28 +218,25 @@ export async function engramRoutes(
     return { status: 'ok', approval_status };
   });
 
-  app.post('/api/engrams/bulk', async (req, reply) => {
+  app.post('/api/engrams/bulk', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
     const user = (req as any).user;
-    const { ids, action } = req.body as {
-      ids: string[];
-      action: 'approve' | 'dismiss';
-    };
-
-    if (!Array.isArray(ids) || ids.length === 0) {
+    const bulkParsed = BulkEngramBodySchema.safeParse(req.body);
+    if (!bulkParsed.success) {
       reply.code(400);
-      return { error: 'ids must be a non-empty array' };
+      // Map Zod issue paths to backward-compatible error messages
+      const actionIssue = bulkParsed.error.issues.find((i) => i.path.includes('action'));
+      const idsIssue = bulkParsed.error.issues.find((i) => i.path.includes('ids'));
+      let errorMessage: string;
+      if (idsIssue) {
+        errorMessage = idsIssue.message.includes('non-empty') ? 'ids must be a non-empty array' : idsIssue.message;
+      } else if (actionIssue) {
+        errorMessage = 'action must be "approve" or "dismiss"';
+      } else {
+        errorMessage = bulkParsed.error.issues[0]?.message ?? 'Invalid request body';
+      }
+      return { error: errorMessage, details: bulkParsed.error.issues };
     }
-
-    const MAX_BULK_SIZE = 100;
-    if (ids.length > MAX_BULK_SIZE) {
-      reply.code(400);
-      return { error: `ids array must not exceed ${MAX_BULK_SIZE} items` };
-    }
-
-    if (action !== 'approve' && action !== 'dismiss') {
-      reply.code(400);
-      return { error: 'action must be "approve" or "dismiss"' };
-    }
+    const { ids, action } = bulkParsed.data;
 
     const approvalStatus = action === 'approve' ? 'approved' : 'dismissed';
     let processed = 0;

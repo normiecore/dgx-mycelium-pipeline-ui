@@ -158,13 +158,16 @@ export default function Vaults() {
 
         <div className="vault-detail-layout">
           <div className="vault-detail-main">
-            <form className="search-form" onSubmit={handleSearch}>
+            <form className="search-form" onSubmit={handleSearch} role="search">
+              <label htmlFor="vault-search-input" className="sr-only">Search engrams in vault</label>
               <input
+                id="vault-search-input"
                 className="search-input"
                 type="text"
                 placeholder="Search engrams in vault..."
                 value={engramSearch}
                 onChange={(e) => setEngramSearch(e.target.value)}
+                aria-label="Search engrams in vault"
               />
               <button className="btn-search" type="submit">Search</button>
             </form>

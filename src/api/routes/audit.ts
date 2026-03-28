@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import type { AuditStore } from '../../storage/audit-store.js';
+import { GetAuditQuerySchema } from '../schemas.js';
 
 interface AuditRoutesOpts extends FastifyPluginOptions {
   auditStore: AuditStore;
@@ -23,21 +24,17 @@ export async function auditRoutes(
       return { error: 'Admin access required' };
     }
 
-    const { userId, action, resourceType, from, to, limit, offset } = req.query as {
-      userId?: string;
-      action?: string;
-      resourceType?: string;
-      from?: string;
-      to?: string;
-      limit?: string;
-      offset?: string;
-    };
+    const auditParsed = GetAuditQuerySchema.safeParse(req.query);
+    if (!auditParsed.success) {
+      return reply.code(400).send({ error: 'Invalid query parameters', details: auditParsed.error.issues });
+    }
+    const { userId: filterUserId, action, resourceType, from, to, limit, offset } = auditParsed.data;
 
-    const parsedLimit = limit ? Math.min(500, Math.max(1, parseInt(limit, 10) || 50)) : undefined;
-    const parsedOffset = offset ? Math.max(0, parseInt(offset, 10) || 0) : undefined;
+    const parsedLimit = Math.min(500, Math.max(1, limit));
+    const parsedOffset = Math.max(0, offset);
 
     return auditStore.query({
-      userId,
+      userId: filterUserId,
       action,
       resourceType,
       from,

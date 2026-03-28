@@ -104,13 +104,13 @@ export default function EngramCard({ engram, showActions = true, onAction, focus
       {expanded && (
         <div className="engram-details">
           <div className="detail-section">
-            <label>Summary</label>
+            <span className="detail-section-label">Summary</span>
             <p>{content}</p>
           </div>
 
           {rawText && (
             <div className="detail-section">
-              <label>Source Text</label>
+              <span className="detail-section-label">Source Text</span>
               <pre className="raw-text">{typeof rawText === 'string' ? rawText : JSON.stringify(rawText, null, 2)}</pre>
             </div>
           )}
@@ -123,7 +123,7 @@ export default function EngramCard({ engram, showActions = true, onAction, focus
 
           {sensitivityClassification && (
             <div className="detail-section">
-              <label>Sensitivity</label>
+              <span className="detail-section-label">Sensitivity</span>
               <span className={`sensitivity-badge ${sensitivityClassification}`}>{sensitivityClassification}</span>
               {sensitivityReasoning && <p className="sensitivity-reason">{sensitivityReasoning}</p>}
             </div>

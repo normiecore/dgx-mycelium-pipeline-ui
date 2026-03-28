@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import type { SettingsStore } from '../../storage/settings-store.js';
 import type { AuditStore } from '../../storage/audit-store.js';
+import { PatchSettingsBodySchema } from '../schemas.js';
 
 interface SettingsRoutesOpts extends FastifyPluginOptions {
   settingsStore: SettingsStore;
@@ -22,7 +23,12 @@ export async function settingsRoutes(
   app.patch('/api/settings', async (req, reply) => {
     const user = (req as any).user;
     if (!user?.userId) return reply.code(401).send({ error: 'Unauthorized' });
-    const raw = req.body as Record<string, unknown>;
+
+    const settingsParsed = PatchSettingsBodySchema.safeParse(req.body);
+    if (!settingsParsed.success) {
+      return reply.code(400).send({ error: 'Invalid settings payload', details: settingsParsed.error.issues });
+    }
+    const raw = settingsParsed.data as Record<string, unknown>;
 
     // Validate and sanitize inputs
     const body: Record<string, unknown> = {};

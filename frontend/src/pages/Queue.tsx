@@ -217,8 +217,9 @@ export default function Queue() {
       {engrams.length > 0 && (
         <div className="queue-toolbar">
           <div className="queue-toolbar-left">
-            <label className="queue-select-all" aria-label="Select all engrams">
+            <label className="queue-select-all" htmlFor="queue-select-all-checkbox" aria-label="Select all engrams">
               <input
+                id="queue-select-all-checkbox"
                 type="checkbox"
                 checked={allSelected}
                 ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
@@ -291,8 +292,9 @@ export default function Queue() {
         <div className="engram-list" ref={listRef} aria-live="polite" aria-keyshortcuts="j k a d">
           {engrams.map((e, i) => (
             <div key={e.id} className="engram-card-row">
-              <label className="engram-checkbox" onClick={(ev) => ev.stopPropagation()}>
+              <label className="engram-checkbox" htmlFor={`queue-select-${e.id}`} onClick={(ev) => ev.stopPropagation()}>
                 <input
+                  id={`queue-select-${e.id}`}
                   type="checkbox"
                   checked={selected.has(e.id)}
                   onChange={() => toggleSelect(e.id)}

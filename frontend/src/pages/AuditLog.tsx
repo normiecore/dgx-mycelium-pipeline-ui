@@ -151,8 +151,9 @@ export default function AuditLog() {
       {/* Filters */}
       <div className="audit-filters">
         <div className="audit-filter-group">
-          <label className="audit-filter-label">User</label>
+          <label className="audit-filter-label" htmlFor="audit-filter-user">User</label>
           <select
+            id="audit-filter-user"
             className="audit-filter-select"
             value={filterUser}
             onChange={(e) => { setFilterUser(e.target.value); setPage(1); }}
@@ -167,8 +168,9 @@ export default function AuditLog() {
         </div>
 
         <div className="audit-filter-group">
-          <label className="audit-filter-label">Action</label>
+          <label className="audit-filter-label" htmlFor="audit-filter-action">Action</label>
           <select
+            id="audit-filter-action"
             className="audit-filter-select"
             value={filterAction}
             onChange={(e) => { setFilterAction(e.target.value); setPage(1); }}
@@ -181,8 +183,9 @@ export default function AuditLog() {
         </div>
 
         <div className="audit-filter-group">
-          <label className="audit-filter-label">From</label>
+          <label className="audit-filter-label" htmlFor="audit-filter-from">From</label>
           <input
+            id="audit-filter-from"
             type="date"
             className="audit-filter-input"
             value={filterFrom}
@@ -191,8 +194,9 @@ export default function AuditLog() {
         </div>
 
         <div className="audit-filter-group">
-          <label className="audit-filter-label">To</label>
+          <label className="audit-filter-label" htmlFor="audit-filter-to">To</label>
           <input
+            id="audit-filter-to"
             type="date"
             className="audit-filter-input"
             value={filterTo}

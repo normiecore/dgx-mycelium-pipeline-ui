@@ -194,7 +194,7 @@ export default function EngramDetail() {
       {/* Full extraction summary */}
       <div className="detail-card">
         <div className="detail-section">
-          <label>Extraction Summary</label>
+          <span className="detail-section-label">Extraction Summary</span>
           <p className="detail-summary">{summary}</p>
         </div>
       </div>
@@ -203,7 +203,7 @@ export default function EngramDetail() {
       {tags.length > 0 && (
         <div className="detail-card">
           <div className="detail-section">
-            <label>Tags</label>
+            <span className="detail-section-label">Tags</span>
             <div className="detail-tags">
               {tags.map((tag: string) => (
                 <Link
@@ -223,7 +223,7 @@ export default function EngramDetail() {
       {sensitivityClassification && (
         <div className="detail-card">
           <div className="detail-section">
-            <label>Sensitivity</label>
+            <span className="detail-section-label">Sensitivity</span>
             <span className={`sensitivity-badge ${sensitivityClassification}`}>{sensitivityClassification}</span>
             {sensitivityReasoning && <p className="sensitivity-reason">{sensitivityReasoning}</p>}
           </div>
@@ -234,12 +234,14 @@ export default function EngramDetail() {
       {Object.keys(sourceMetadata).length > 0 && (
         <div className="detail-card">
           <div className="detail-section">
-            <label
+            <button
+              type="button"
               className="detail-section-toggle"
               onClick={() => setSourceExpanded(!sourceExpanded)}
+              aria-expanded={sourceExpanded}
             >
               Source Metadata {sourceExpanded ? '\u25B2' : '\u25BC'}
-            </label>
+            </button>
             {sourceExpanded && (
               <div className="source-metadata-grid">
                 {Object.entries(sourceMetadata).map(([key, value]) => (
@@ -260,7 +262,7 @@ export default function EngramDetail() {
       {relatedEngrams.length > 0 && (
         <div className="detail-card">
           <div className="detail-section">
-            <label>Related Engrams</label>
+            <span className="detail-section-label">Related Engrams</span>
             <div className="related-list">
               {relatedEngrams.map((rel: any) => (
                 <Link key={rel.id} to={`/engram/${rel.id}`} className="related-engram-link">
@@ -279,7 +281,7 @@ export default function EngramDetail() {
       {relatedEngrams.length > 0 && (
         <div className="detail-card">
           <div className="detail-section">
-            <label>Knowledge Graph</label>
+            <span className="detail-section-label">Knowledge Graph</span>
             <div className="mini-graph">
               {/* Center node */}
               <div className="graph-node graph-node-center" title={engram.concept || 'This engram'}>

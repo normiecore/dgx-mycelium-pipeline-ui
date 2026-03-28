@@ -20,12 +20,15 @@ export default function Login() {
         <h1>🍄 Mycelium</h1>
         <p className="login-subtitle">Organisational knowledge, connected.</p>
         <form onSubmit={handleSubmit}>
+          <label htmlFor="login-token" className="sr-only">JWT Token</label>
           <textarea
+            id="login-token"
             className="token-input"
             placeholder="Paste your JWT token here..."
             value={token}
             onChange={e => setTokenValue(e.target.value)}
             rows={4}
+            aria-label="JWT Token"
           />
           <button type="submit" className="btn-login">Sign In</button>
         </form>

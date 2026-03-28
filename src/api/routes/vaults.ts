@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import type { EngramIndex, VaultQueryFilter } from '../../storage/engram-index.js';
 import { VaultManager } from '../../storage/vault-manager.js';
+import { VaultNameParamsSchema, VaultEngramsQuerySchema } from '../schemas.js';
 
 interface VaultRoutesOpts extends FastifyPluginOptions {
   engramIndex: EngramIndex;
@@ -108,12 +109,17 @@ export async function vaultRoutes(
 
   // GET /api/vaults/:name/engrams — paginated engram list for a vault
   app.get('/api/vaults/:name/engrams', async (req, reply) => {
-    const { name } = req.params as { name: string };
-    const { limit, offset, q } = req.query as {
-      limit?: string;
-      offset?: string;
-      q?: string;
-    };
+    const paramsParsed = VaultNameParamsSchema.safeParse(req.params);
+    if (!paramsParsed.success) {
+      return reply.code(400).send({ error: 'Invalid vault name', details: paramsParsed.error.issues });
+    }
+    const { name } = paramsParsed.data;
+
+    const queryParsed = VaultEngramsQuerySchema.safeParse(req.query);
+    if (!queryParsed.success) {
+      return reply.code(400).send({ error: 'Invalid query parameters', details: queryParsed.error.issues });
+    }
+    const { limit: maxResults, offset: offsetNum, q } = queryParsed.data;
 
     const filter = vaultFilter(name);
     if (!filter) {
@@ -121,16 +127,17 @@ export async function vaultRoutes(
       return { error: 'Unknown vault' };
     }
 
-    const maxResults = parseInt(limit || '20', 10);
-    const offsetNum = parseInt(offset || '0', 10);
-
     const result = engramIndex.queryVaultEngrams(filter, q, maxResults, offsetNum);
     return result;
   });
 
   // GET /api/vaults/:name/stats — count, top tags, date range
   app.get('/api/vaults/:name/stats', async (req, reply) => {
-    const { name } = req.params as { name: string };
+    const statsParsed = VaultNameParamsSchema.safeParse(req.params);
+    if (!statsParsed.success) {
+      return reply.code(400).send({ error: 'Invalid vault name', details: statsParsed.error.issues });
+    }
+    const { name } = statsParsed.data;
 
     const filter = vaultFilter(name);
     if (!filter) {

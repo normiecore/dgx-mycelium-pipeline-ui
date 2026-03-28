@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { logger } from '../config/logger.js';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyStatic from '@fastify/static';
+import fastifyCors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import type { AuthVerifier } from './auth.js';
 import { engramRoutes } from './routes/engrams.js';
@@ -59,6 +60,19 @@ export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
 
   await app.register(fastifyWebsocket);
 
+  // CORS — allow origins from env var, default to common dev ports
+  const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173,http://localhost:3001')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  await app.register(fastifyCors, {
+    origin: corsOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
   // Rate limiting: 100 requests per minute per IP for API routes
   await app.register(rateLimit, {
     max: 100,
@@ -89,12 +103,22 @@ export async function createServer(deps: ServerDeps): Promise<FastifyInstance> {
       checks.nats = deps.natsClient.isConnected();
     }
 
-    const allHealthy = Object.values(checks).every(Boolean);
+    // SQLite database connectivity checks
+    const databases: Record<string, boolean> = {};
+    databases.engramIndex = deps.engramIndex.ping();
+    if (deps.auditStore) databases.auditStore = deps.auditStore.ping();
+    if (deps.userStore) databases.userStore = deps.userStore.ping();
+    if (deps.settingsStore) databases.settingsStore = deps.settingsStore.ping();
+    if (deps.deadLetterStore) databases.deadLetterStore = deps.deadLetterStore.ping();
+
+    const allChecksHealthy = Object.values(checks).every(Boolean);
+    const allDbsHealthy = Object.values(databases).every(Boolean);
 
     return {
-      status: allHealthy ? 'ok' : 'degraded',
+      status: allChecksHealthy && allDbsHealthy ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
       checks,
+      databases,
       metrics: deps.metrics?.snapshot() ?? null,
     };
   });

@@ -3,6 +3,7 @@ import type { DeadLetterStore } from '../../storage/dead-letter-store.js';
 import type { NatsClient } from '../../queue/nats-client.js';
 import type { AuditStore } from '../../storage/audit-store.js';
 import { TOPICS } from '../../queue/topics.js';
+import { DeadLetterIdParamsSchema } from '../schemas.js';
 
 interface DeadLetterRoutesOpts {
   deadLetterStore: DeadLetterStore;
@@ -24,8 +25,9 @@ export async function deadLetterRoutes(
   });
 
   app.delete<{ Params: { id: string } }>('/api/dead-letters/:id', async (req, reply) => {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) return reply.code(400).send({ error: 'Invalid ID' });
+    const paramsParsed = DeadLetterIdParamsSchema.safeParse(req.params);
+    if (!paramsParsed.success) return reply.code(400).send({ error: 'Invalid ID' });
+    const id = paramsParsed.data.id;
     deadLetterStore.delete(id);
 
     const user = (req as any).user;
@@ -41,8 +43,9 @@ export async function deadLetterRoutes(
   });
 
   app.post<{ Params: { id: string } }>('/api/dead-letters/:id/retry', async (req, reply) => {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) return reply.code(400).send({ error: 'Invalid ID' });
+    const retryParsed = DeadLetterIdParamsSchema.safeParse(req.params);
+    if (!retryParsed.success) return reply.code(400).send({ error: 'Invalid ID' });
+    const id = retryParsed.data.id;
 
     if (!natsClient) {
       return reply.code(503).send({ error: 'NATS client unavailable' });

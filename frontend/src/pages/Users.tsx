@@ -283,13 +283,16 @@ export default function Users() {
       )}
 
       {/* Search + filter toolbar */}
-      <form className="users-toolbar" onSubmit={handleSearch}>
+      <form className="users-toolbar" onSubmit={handleSearch} role="search">
+        <label htmlFor="users-search-input" className="sr-only">Search users</label>
         <input
+          id="users-search-input"
           type="text"
           className="search-input"
           placeholder="Search by name or email..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
+          aria-label="Search by name or email"
         />
         <button type="submit" className="btn-search">Search</button>
         {search && (
@@ -355,6 +358,7 @@ export default function Users() {
                         value={user.department}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => handleDeptChange(user, e.target.value)}
+                        aria-label={`Department for ${user.displayName || user.email}`}
                       >
                         <option value="">(none)</option>
                         {departments.map((d) => (
@@ -371,6 +375,7 @@ export default function Users() {
                         value={user.role}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => handleRoleChange(user, e.target.value)}
+                        aria-label={`Role for ${user.displayName || user.email}`}
                       >
                         <option value="user">user</option>
                         <option value="admin">admin</option>
@@ -388,6 +393,8 @@ export default function Users() {
                         className={`users-toggle ${user.harvestingEnabled ? 'on' : 'off'}`}
                         onClick={(e) => { e.stopPropagation(); handleToggleHarvesting(user); }}
                         title={user.harvestingEnabled ? 'Disable harvesting' : 'Enable harvesting'}
+                        aria-label={`${user.harvestingEnabled ? 'Disable' : 'Enable'} harvesting for ${user.displayName || user.email}`}
+                        aria-pressed={!!user.harvestingEnabled}
                       >
                         {user.harvestingEnabled ? 'ON' : 'OFF'}
                       </button>
@@ -397,6 +404,7 @@ export default function Users() {
                         className="users-sync-btn"
                         onClick={(e) => { e.stopPropagation(); handleSyncStats(user.id); }}
                         title="Recalculate stats from engram index"
+                        aria-label={`Sync stats for ${user.displayName || user.email}`}
                       >
                         Sync
                       </button>

@@ -110,7 +110,9 @@ export default function Search() {
       <p className="page-subtitle">Find knowledge across all captured engrams</p>
 
       <form onSubmit={handleSearch} className="search-form" role="search">
+        <label htmlFor="search-engrams-input" className="sr-only">Search engrams</label>
         <input
+          id="search-engrams-input"
           type="text"
           className="search-input"
           placeholder="Search engrams... (e.g. 'pipe stress analysis')"
@@ -141,8 +143,9 @@ export default function Search() {
               <span className="facet-label">Source</span>
               <div className="facet-checkboxes">
                 {SOURCE_TYPES.map((src) => (
-                  <label key={src} className="facet-checkbox">
+                  <label key={src} className="facet-checkbox" htmlFor={`search-source-${src}`}>
                     <input
+                      id={`search-source-${src}`}
                       type="checkbox"
                       checked={selectedSources.has(src)}
                       onChange={() => toggleSource(src)}

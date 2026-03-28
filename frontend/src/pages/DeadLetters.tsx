@@ -106,11 +106,11 @@ export default function DeadLetters() {
               {expanded === item.id && (
                 <div className="engram-details">
                   <div className="detail-section">
-                    <label>Error</label>
+                    <span className="detail-section-label">Error</span>
                     <pre className="raw-text">{item.error}</pre>
                   </div>
                   <div className="detail-section">
-                    <label>Payload</label>
+                    <span className="detail-section-label">Payload</span>
                     <pre className="raw-text">{(() => { try { return JSON.stringify(JSON.parse(item.payload), null, 2); } catch { return item.payload; } })()}</pre>
                   </div>
                 </div>

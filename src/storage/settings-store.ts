@@ -99,6 +99,16 @@ export class SettingsStore {
     return row?.auto_approve_confidence ?? 0;
   }
 
+  /** Lightweight connectivity check — returns true if the DB responds to a simple query. */
+  ping(): boolean {
+    try {
+      this.db.prepare('SELECT 1').get();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   close(): void {
     this.db.close();
   }

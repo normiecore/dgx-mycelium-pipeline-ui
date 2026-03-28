@@ -56,6 +56,16 @@ export class DeadLetterStore {
     this.db.prepare('DELETE FROM dead_letters WHERE id = ?').run(id);
   }
 
+  /** Lightweight connectivity check — returns true if the DB responds to a simple query. */
+  ping(): boolean {
+    try {
+      this.db.prepare('SELECT 1').get();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   close(): void {
     this.db.close();
   }

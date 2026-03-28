@@ -54,6 +54,8 @@ export class UserStore {
       total_dismissed INTEGER NOT NULL DEFAULT 0,
       last_capture_at TEXT
     )`);
+
+    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_user_stats_total_captures ON user_stats (total_captures DESC)`);
   }
 
   getAll(page = 1, limit = 20, department?: string): { users: UserRow[]; total: number } {
@@ -191,6 +193,16 @@ export class UserStore {
     ).all(pattern, pattern, limit, offset) as UserRow[];
 
     return { users, total };
+  }
+
+  /** Lightweight connectivity check — returns true if the DB responds to a simple query. */
+  ping(): boolean {
+    try {
+      this.db.prepare('SELECT 1').get();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   close(): void {

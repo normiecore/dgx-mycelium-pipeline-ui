@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import type { EngramIndex } from '../../storage/engram-index.js';
 import type { MuninnDBClient } from '../../storage/muninndb-client.js';
 import { VaultManager } from '../../storage/vault-manager.js';
+import { TimelineQuerySchema } from '../schemas.js';
 
 interface TimelineRoutesOpts extends FastifyPluginOptions {
   engramIndex: EngramIndex;
@@ -88,7 +89,11 @@ export async function timelineRoutes(
   // GET /api/engrams/timeline?date=YYYY-MM-DD&userId=optional
   app.get('/api/engrams/timeline', async (req, reply) => {
     const user = (req as any).user;
-    const { date, userId } = req.query as { date?: string; userId?: string };
+    const timelineParsed = TimelineQuerySchema.safeParse(req.query);
+    if (!timelineParsed.success) {
+      return reply.code(400).send({ error: 'Invalid query parameters', details: timelineParsed.error.issues });
+    }
+    const { date, userId } = timelineParsed.data;
 
     // Default to today
     const targetDate = date || new Date().toISOString().slice(0, 10);

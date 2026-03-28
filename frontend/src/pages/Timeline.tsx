@@ -141,11 +141,14 @@ export default function Timeline() {
       {/* Date navigation */}
       <div className="timeline-date-nav">
         <button className="timeline-nav-btn" onClick={() => shiftDate(-1)} aria-label="Previous day">&larr;</button>
+        <label htmlFor="timeline-date" className="sr-only">Select date</label>
         <input
+          id="timeline-date"
           type="date"
           className="timeline-date-input"
           value={date}
           onChange={(e) => setDate(e.target.value)}
+          aria-label="Select date"
         />
         <button className="timeline-nav-btn" onClick={() => shiftDate(1)} aria-label="Next day">&rarr;</button>
         <button className="timeline-today-btn" onClick={() => setDate(new Date().toISOString().slice(0, 10))}>

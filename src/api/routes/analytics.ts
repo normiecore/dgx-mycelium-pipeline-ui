@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import type { EngramIndex } from '../../storage/engram-index.js';
 import type { PipelineMetrics } from '../../pipeline/metrics.js';
+import { AnalyticsVolumeQuerySchema, AnalyticsTopTagsQuerySchema } from '../schemas.js';
 
 interface AnalyticsRoutesOpts extends FastifyPluginOptions {
   engramIndex: EngramIndex;
@@ -15,8 +16,10 @@ export async function analyticsRoutes(
 
   const MS_PER_DAY = 86_400_000;
 
+  const analyticsRateLimit = { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } };
+
   // GET /api/analytics/overview — summary stats
-  app.get('/api/analytics/overview', async (req, reply) => {
+  app.get('/api/analytics/overview', analyticsRateLimit, async (req, reply) => {
     try {
     const user = (req as any).user;
 
@@ -61,10 +64,14 @@ export async function analyticsRoutes(
   });
 
   // GET /api/analytics/volume?period=day|week|month — time-series capture volume
-  app.get('/api/analytics/volume', async (req, reply) => {
+  app.get('/api/analytics/volume', analyticsRateLimit, async (req, reply) => {
     try {
     const user = (req as any).user;
-    const { period } = req.query as { period?: string };
+    const volumeParsed = AnalyticsVolumeQuerySchema.safeParse(req.query);
+    if (!volumeParsed.success) {
+      return reply.code(400).send({ error: 'Invalid query parameters', details: volumeParsed.error.issues });
+    }
+    const { period } = volumeParsed.data;
 
     let days: number;
     switch (period) {
@@ -92,7 +99,7 @@ export async function analyticsRoutes(
   });
 
   // GET /api/analytics/sources — breakdown by source type
-  app.get('/api/analytics/sources', async (req, reply) => {
+  app.get('/api/analytics/sources', analyticsRateLimit, async (req, reply) => {
     try {
     const user = (req as any).user;
 
@@ -113,11 +120,14 @@ export async function analyticsRoutes(
   });
 
   // GET /api/analytics/top-tags?limit=20 — most frequent tags
-  app.get('/api/analytics/top-tags', async (req, reply) => {
+  app.get('/api/analytics/top-tags', analyticsRateLimit, async (req, reply) => {
     try {
     const user = (req as any).user;
-    const { limit } = req.query as { limit?: string };
-    const maxTags = parseInt(limit || '20', 10);
+    const tagsParsed = AnalyticsTopTagsQuerySchema.safeParse(req.query);
+    if (!tagsParsed.success) {
+      return reply.code(400).send({ error: 'Invalid query parameters', details: tagsParsed.error.issues });
+    }
+    const maxTags = tagsParsed.data.limit;
 
     const tagStrings = engramIndex.getAllTags(user.userId);
 
@@ -142,7 +152,7 @@ export async function analyticsRoutes(
   });
 
   // GET /api/analytics/confidence — confidence distribution
-  app.get('/api/analytics/confidence', async (req, reply) => {
+  app.get('/api/analytics/confidence', analyticsRateLimit, async (req, reply) => {
     try {
     const user = (req as any).user;
 

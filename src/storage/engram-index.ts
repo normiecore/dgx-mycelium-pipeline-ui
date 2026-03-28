@@ -557,6 +557,16 @@ export class EngramIndex {
     return result.changes;
   }
 
+  /** Lightweight connectivity check — returns true if the DB responds to a simple query. */
+  ping(): boolean {
+    try {
+      this.db.prepare('SELECT 1').get();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   close(): void {
     this.db.close();
   }

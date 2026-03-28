@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import type { UserStore } from '../../storage/user-store.js';
 import type { EngramIndex } from '../../storage/engram-index.js';
 import type { AuditStore } from '../../storage/audit-store.js';
+import { GetUsersQuerySchema, UserIdParamsSchema, PatchUserBodySchema } from '../schemas.js';
 
 interface UserRoutesOpts extends FastifyPluginOptions {
   userStore: UserStore;
@@ -23,16 +24,15 @@ export async function userRoutes(
   const { userStore, engramIndex, auditStore } = opts;
 
   // GET /api/users — List all users with stats (paginated, filterable)
-  app.get('/api/users', async (req) => {
-    const { page, limit, department, q } = req.query as {
-      page?: string;
-      limit?: string;
-      department?: string;
-      q?: string;
-    };
+  app.get('/api/users', async (req, reply) => {
+    const usersParsed = GetUsersQuerySchema.safeParse(req.query);
+    if (!usersParsed.success) {
+      return reply.code(400).send({ error: 'Invalid query parameters', details: usersParsed.error.issues });
+    }
+    const { page, limit, department, q } = usersParsed.data;
 
-    const pageNum = Math.max(1, parseInt(page || '1', 10));
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit || '20', 10)));
+    const pageNum = Math.max(1, page);
+    const limitNum = Math.min(100, Math.max(1, limit));
 
     if (q) {
       const { users: rawUsers, total } = userStore.search(q, pageNum, limitNum);
@@ -52,7 +52,11 @@ export async function userRoutes(
 
   // GET /api/users/:id — Single user detail with full stats
   app.get<{ Params: { id: string } }>('/api/users/:id', async (req, reply) => {
-    const { id } = req.params;
+    const idParsed = UserIdParamsSchema.safeParse(req.params);
+    if (!idParsed.success) {
+      return reply.code(400).send({ error: 'Invalid user ID', details: idParsed.error.issues });
+    }
+    const { id } = idParsed.data;
     const user = userStore.getById(id);
     if (!user) {
       reply.code(404);
@@ -69,12 +73,17 @@ export async function userRoutes(
 
   // PATCH /api/users/:id — Update department, role, harvesting_enabled
   app.patch<{ Params: { id: string } }>('/api/users/:id', async (req, reply) => {
-    const { id } = req.params;
-    const body = req.body as {
-      department?: string;
-      role?: string;
-      harvestingEnabled?: boolean;
-    };
+    const idParsed = UserIdParamsSchema.safeParse(req.params);
+    if (!idParsed.success) {
+      return reply.code(400).send({ error: 'Invalid user ID', details: idParsed.error.issues });
+    }
+    const { id } = idParsed.data;
+
+    const bodyParsed = PatchUserBodySchema.safeParse(req.body);
+    if (!bodyParsed.success) {
+      return reply.code(400).send({ error: 'Invalid request body', details: bodyParsed.error.issues });
+    }
+    const body = bodyParsed.data;
 
     const existing = userStore.getById(id);
     if (!existing) {
@@ -130,8 +139,12 @@ export async function userRoutes(
   });
 
   // POST /api/users/:id/sync-stats — Recalculate stats from engram_index
-  app.post<{ Params: { id: string } }>('/api/users/:id/sync-stats', async (req, reply) => {
-    const { id } = req.params;
+  app.post<{ Params: { id: string } }>('/api/users/:id/sync-stats', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const idParsed = UserIdParamsSchema.safeParse(req.params);
+    if (!idParsed.success) {
+      return reply.code(400).send({ error: 'Invalid user ID', details: idParsed.error.issues });
+    }
+    const { id } = idParsed.data;
 
     const existing = userStore.getById(id);
     if (!existing) {

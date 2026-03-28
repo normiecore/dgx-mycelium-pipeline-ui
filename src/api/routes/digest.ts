@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import type { EngramIndex } from '../../storage/engram-index.js';
 import { generateDigest } from '../../pipeline/digest.js';
+import { DigestQuerySchema } from '../schemas.js';
 
 interface DigestRoutesOpts extends FastifyPluginOptions {
   engramIndex: EngramIndex;
@@ -13,14 +14,15 @@ export async function digestRoutes(
   const { engramIndex } = opts;
 
   // GET /api/digest?period=daily|weekly
-  app.get('/api/digest', async (req, reply) => {
+  app.get('/api/digest', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const user = (req as any).user;
-    const { period } = req.query as { period?: string };
-
-    if (period !== 'daily' && period !== 'weekly') {
+    const digestParsed = DigestQuerySchema.safeParse(req.query);
+    if (!digestParsed.success) {
       reply.code(400);
-      return { error: 'period must be "daily" or "weekly"' };
+      const firstMessage = digestParsed.error.issues[0]?.message ?? 'Invalid query parameters';
+      return { error: firstMessage, details: digestParsed.error.issues };
     }
+    const { period } = digestParsed.data;
 
     try {
       const digest = generateDigest(engramIndex, user.userId, period);
